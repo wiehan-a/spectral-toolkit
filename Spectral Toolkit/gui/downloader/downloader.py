@@ -5,8 +5,7 @@ Created on Sep 11, 2013
 '''
 from PySide.QtCore import *
 from PySide.QtGui import *
-import utils
-import sys, time
+import sys, time, os, utils
 
 from gui import *
 from gui.downloader import *
@@ -102,12 +101,56 @@ class Downloader(QWidget):
 
     @Slot()
     def download_confirm_slot(self):
-        self.switch_in_new_hosted_widget(DownloaderWidget(self.parameters))
+        self.switch_in_new_hosted_widget(DownloaderWidget(self.parameters, self))
+    
+    @Slot()
+    def done_slot(self):
+        self.switch_in_new_hosted_widget(DownloadDoneWidget(self.parameters))
+        self.main_vbox.setStretchFactor(self.hosted_widget, 2)
+        self.hosted_widget.download_more_button.clicked.connect(self.go_download_more_slot)
+        
+    @Slot()
+    def go_download_more_slot(self):
+        self.switch_in_new_hosted_widget(DataSelectorWidget(), forward=False)
     
     def run(self):
         self.show()
-    
 
+class DownloadDoneWidget(QWidget):
+    
+    title = "<h3>Downloading has completed successfully</h3>"
+    
+    
+    def __init__(self, params):
+        QWidget.__init__(self)
+        
+        self.params = params
+        
+        self.main_hbox = QHBoxLayout(self)
+        self.main_hbox.setAlignment(Qt.AlignHCenter)
+        
+        self.main_vbox = QVBoxLayout()
+        self.main_hbox.addLayout(self.main_vbox)
+        self.main_vbox.setAlignment(Qt.AlignHCenter)
+        
+        self.exit_button = QPushButton('Exit')
+        self.open_folder_button = QPushButton('Open download folder')
+        self.download_more_button = QPushButton('Download more data')
+        self.go_home_button = QPushButton('Spectral Toolkit (Main)')
+        
+        self.main_vbox.addWidget(self.download_more_button)
+        self.main_vbox.addWidget(self.open_folder_button)
+        self.main_vbox.addWidget(self.go_home_button)
+        self.main_vbox.addWidget(self.exit_button)
+        
+        self.open_folder_button.clicked.connect(self.open_folder_slot)
+        self.exit_button.clicked.connect(sys.exit)
+        
+    @Slot()
+    def open_folder_slot(self):
+        path = QDir.toNativeSeparators(os.path.abspath(os.path.dirname(sys.argv[0]))+'/Downloaded Data/')
+        print QDesktopServices.openUrl(QUrl('file:///'+path))
+        
             
         
 class DownloaderWidget(QWidget):
@@ -115,10 +158,11 @@ class DownloaderWidget(QWidget):
     title = "<h3>Step 3: Downloading</h3>"
     
     
-    def __init__(self, params):
+    def __init__(self, params, parent_):
         QWidget.__init__(self)
         
         self.params = params
+        self.parent_ = parent_
         
         self.file_count = lsbb.get_number_of_files(params)
         self.file_size = lsbb.get_single_file_size(params)
@@ -159,6 +203,7 @@ class DownloaderWidget(QWidget):
         self.worker.progress_update.connect(self.update_progress)
         self.wthread.started.connect(self.worker.start_downloading)
         self.worker.done.connect(self.wthread.quit)
+        self.worker.done.connect(self.parent_.done_slot)
         self.wthread.start()
         
         
@@ -191,10 +236,6 @@ class DownloaderWidget(QWidget):
         self.overall_progress_label.setText('Overall progress: ' + kwparams['overall_downloaded'] + ' of ' + 
                                              kwparams['overall_size'] + ' downloaded')
         self.overall_progress_bar.setValue(kwparams['overall_bytes'])
-    
-    @Slot()
-    def done(self):
-        pass
         
 
         

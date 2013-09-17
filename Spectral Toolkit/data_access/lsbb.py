@@ -6,7 +6,7 @@ Created on Sep 12, 2013
 
 import ftplib as ftp
 import socket
-import data_access.segy
+import data_access.segy as segy
 import datetime
 import os.path
 import utils
@@ -16,11 +16,12 @@ from PySide.QtCore import *
 LSBB_IP_ADRESS = '193.52.13.2'
 LSBB_BASE_URL = 'pub/data/Daily_SEGY_Data/'
 
-LSBB_LOCAL_STORAGE_PATH = '../Downloaded Data/LSBB/'
+LSBB_LOCAL_STORAGE_PATH = 'Downloaded Data/LSBB/'
 
-if not os.path.exists('../Downloaded Data/LSBB/'):
-    os.mkdir('../Downloaded Data/')
-    os.mkdir('../Downloaded Data/LSBB/')
+if not os.path.exists('Downloaded Data/LSBB/'):
+    if not os.path.exists('Downloaded Data/'):
+        os.mkdir('Downloaded Data/')
+    os.mkdir('Downloaded Data/LSBB/')
     
 class ControlledFTP:
     ftp_connection = None
@@ -56,12 +57,15 @@ class ControlledFTP:
     def download_persist_callback(self, buffer):
         for callback in self.download_callbacks: 
             callback(buffer)
-        print 'OK, flushing to file'
+        self.file.write(buffer)
         
-    def download(self, date, component):
+    def download(self, date, component, params):
         self.ftp_connection.cwd('/')
         self.ftp_connection.sendcmd('TYPE I')
+        filename = get_local_file_name(date, component, params)
+        self.file = open(filename, 'wb')
         self.ftp_connection.retrbinary('RETR '+self.get_path(date, component), self.download_persist_callback, 1024*1024/4)
+        self.file.close()
     
     def get_components(self, filelist):
         return sorted(list(set([x.split('.')[-2] for x in filelist])))
@@ -120,7 +124,6 @@ class DownloaderWorker(QObject):
     
     Slot()
     def start_downloading(self):
-        
         file_size = get_single_file_size(self.params)
         
         self.count = 1
@@ -135,14 +138,13 @@ class DownloaderWorker(QObject):
                     self.cur_size = 0
                     print 'Downloading', sd, c
 
-                    handle.download(sd, c)
+                    handle.download(sd, c, self.params)
 
                     self.size += file_size
                     self.count += 1
                      
                 sd += datetime.timedelta(days=1)
-            
-            print handle.get_header(datetime.date(2012, 8, 17), 'CGE')
+                
         self.done.emit()
     
 def get_local_file_name(date, component, params):
