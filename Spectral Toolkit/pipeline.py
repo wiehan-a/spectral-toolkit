@@ -6,31 +6,31 @@ Created on Sep 4, 2013
 from __future__ import division
 import time, util
 import numpy as np
-from segy import *
+from data_access.segy import *
 import scipy.signal as sig
 from scipy.signal.signaltools import lfilter
 import matplotlib.pyplot as plt
-import frequency as fr
-import sigproc
+import data_processing.frequency as fr
+import data_processing.sigproc as sigproc
 
 import cPickle, os
 
 FILES = ["2011.08.04-00.00.00.FR.MGN.00.CGE.SEGY", "2011.08.05-00.00.00.FR.MGN.00.CGE.SEGY",  "2011.08.06-00.00.00.FR.MGN.00.CGE.SEGY"]
-DOWNSAMPLE_FACTOR = 10
+DOWNSAMPLE_FACTOR = 1
 
-REMOVE_DISCONTINUITIES = True
+REMOVE_DISCONTINUITIES = False
 
 DRAW_IN_LOG_DOMAIN = True
 START_FREQUENCY = 1e-3
-END_FREQUENCY = 125/2/10
+END_FREQUENCY = 500/2
 
 DO_NORMALISATION = True
 NORMALISATION_ORDER = 1
-DRAW_NORMALISATION_CURVE = True
+DRAW_NORMALISATION_CURVE = False
 
 WINDOW = sig.blackman
-ZERO_PADDING_FACTOR = 3
-FREQUENCY_RESOLUTION_FACTOR = 0.8
+ZERO_PADDING_FACTOR = 1
+FREQUENCY_RESOLUTION_FACTOR = 0.2
 
 '''
     periodogram
@@ -119,13 +119,15 @@ if __name__ == '__main__':
         pass
     
     if DRAW_ESTIMATED_SPECTRUM:
+        p = sig.decimate(p, 10)
+        p = sig.decimate(p, 10)
         if DRAW_IN_LOG_DOMAIN:
             p = 10*np.log10(p)
             N = len(p)
-        ref = 125/2/DOWNSAMPLE_FACTOR
+        ref = 500/2/DOWNSAMPLE_FACTOR
         start = int(N*(START_FREQUENCY)/ref)
         end = int(N*(END_FREQUENCY)/ref)
-        t = np.arange(0, 125/2/DOWNSAMPLE_FACTOR, (125/2/DOWNSAMPLE_FACTOR) / (N - 0.5))
+        t = np.arange(0, 500/2/DOWNSAMPLE_FACTOR, (500/2/DOWNSAMPLE_FACTOR) / (N - 0.5))
         p = p[start:end]
         t = t[start:end]
         plt.plot(t, p)

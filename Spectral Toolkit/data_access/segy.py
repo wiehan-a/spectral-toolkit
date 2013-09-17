@@ -7,25 +7,30 @@ from __future__ import division
 
 from struct import *
 import array
-import matplotlib.pyplot as plt
+# import matplotlib.pyplot as plt
 import numpy as np
-import scipy.signal as sig
-from numpy.fft.fftpack import ifft
-from numpy.lib.function_base import meshgrid
+# import scipy.signal as sig
+# from numpy.fft.fftpack import ifft
+# from numpy.lib.function_base import meshgrid
 
-def read_segy_head(filename):
-    format_string = "<iiiiiiihhhhiiiiiiiihhiiiihhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhBBBBBBBBBBBBBBBBBBhihhhhhhhhfHhiii"
+def parse_header(data):
     
+    format_string = "<iiiiiiihhhhiiiiiiiihhiiiihhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhhBBBBBBBBBBBBBBBBBBhihhhhhhhhfHhiii"
     head = {}
-    f = open(filename, 'rb')
-    data = unpack(format_string, f.read(240))
-    f.close()
+    
+    data = unpack(format_string, data)
     
     head['header_bytes'] = 240
     head['data_form'] = data[91]
     head['sample_count'] = max(data[102], data[38])
     head['sample rate'] = 1 / (data[39] * 1e-6)
     
+    return head    
+
+def read_segy_head(filename):
+    f = open(filename, 'rb')
+    head = parse_header(f.read(240))
+    f.close()
     return head
 
 def read_segy_data(filename, head):
@@ -52,31 +57,28 @@ def read_in_segy(files):
         data = np.hstack((data, read_segy_data(filename, head)))
     return data
 
-def download(date, verbose=True):
-    pass
-
-if __name__ == '__main__':
-    import time, util
-    time.clock()
-    
-    files = ["2011.08.04-00.00.00.FR.MGN.00.CGE.SEGY", "2011.08.05-00.00.00.FR.MGN.00.CGE.SEGY",  "2011.08.06-00.00.00.FR.MGN.00.CGE.SEGY"]
-    #files = ["2012.08.02-23.59.59.FR.MGN.00.CGE.SEGY"]
-    data = np.zeros(0)
-    for filename in files:
-        head = read_segy_head(filename)
-        data = np.hstack((data, read_segy_data(filename, head)))
-       
-    print "Finished reading after: ", time.clock()
-    ds = data
-    for _ in xrange(3):
-        ds = sig.decimate(ds, 5)
-    ds = sig.decimate(ds, 2)
-#     ds = np.hstack((ds, np.zeros(1)))
-    print "Data length after downsample: ", len(data)
-    util.prime_factors(len(data))
-    print "Finished downsampling after: ", time.clock()
-    
-    import sigproc
+# if __name__ == '__main__':
+#     import time, util
+#     time.clock()
+#     
+#     files = ["2011.08.04-00.00.00.FR.MGN.00.CGE.SEGY", "2011.08.05-00.00.00.FR.MGN.00.CGE.SEGY", "2011.08.06-00.00.00.FR.MGN.00.CGE.SEGY"]
+#     # files = ["2012.08.02-23.59.59.FR.MGN.00.CGE.SEGY"]
+#     data = np.zeros(0)
+#     for filename in files:
+#         head = read_segy_head(filename)
+#         data = np.hstack((data, read_segy_data(filename, head)))
+#        
+#     print "Finished reading after: ", time.clock()
+#     ds = data
+#     for _ in xrange(3):
+#         ds = sig.decimate(ds, 5)
+#     ds = sig.decimate(ds, 2)
+# #     ds = np.hstack((ds, np.zeros(1)))
+#     print "Data length after downsample: ", len(data)
+#     util.prime_factors(len(data))
+#     print "Finished downsampling after: ", time.clock()
+#     
+#     import sigproc
 #     a = sigproc.linear_predictor(ds, order=1)
 #     w, h = sig.freqz(np.hstack((np.array([1]), a)))
 #     plt.plot(w, np.log10(1/np.abs(h)),'r')
@@ -91,14 +93,14 @@ if __name__ == '__main__':
 #     plt.plot(w, np.log10(1/np.abs(h)),'g')
 #     plt.legend(["p = 1","p = 2","p = 500","p = 1000"])
 #     plt.show()
-    a = sigproc.predict_signal(ds, 10)
-    
-    print "Finished predicting after: ", time.clock()
-    from scipy.signal.signaltools import lfilter
-    #ds = lfilter([1, a[0]], [1], ds)
+#     a = sigproc.predict_signal(ds, 10)
+#     
+#     print "Finished predicting after: ", time.clock()
+#     from scipy.signal.signaltools import lfilter
+    # ds = lfilter([1, a[0]], [1], ds)
 #     plt.plot(ds)
 #     plt.show()
-    #data = sig.lfilter([1, 0, -16, 0,  16, 0, -1], [-16], data)
+    # data = sig.lfilter([1, 0, -16, 0,  16, 0, -1], [-16], data)
 #     plt.plot(np.abs(f_sig))
 #     plt.show()
     

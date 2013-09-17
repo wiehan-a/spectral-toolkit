@@ -7,6 +7,12 @@ from numpy import *
 
 primelist = [2, 3, 5, 7]
 
+def sizeof_fmt(num):
+    for x in ['bytes', 'KB', 'MB', 'GB', 'TB']:
+        if num < 1024.0:
+            return "%3.1f %s" % (num, x)
+        num /= 1024.0
+
 def next_primes(n):
     global primelist
     if primelist[-1] >= n:

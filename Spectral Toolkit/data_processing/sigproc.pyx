@@ -8,12 +8,22 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy.signal.signaltools import lfilter
 import scipy.signal as sig
-from joblib import Parallel, delayed
+from numpy.core.numeric import ndarray
+
+cimport numpy as np
+cimport cython
+
+
+DTYPE = np.float64
+# "ctypedef" assigns a corresponding compile-time type to DTYPE_t. For
+# every type in the numpy module there's a corresponding compile-time
+# type with a _t-suffix.
+ctypedef np.float64_t DTYPE_t
 
 def auto_corr(signal, maximum_lag=3):
     estimate = np.zeros(maximum_lag+1)
     N = len(signal) - 1
-    for m, _ in enumerate(estimate):
+    for m in xrange(len(estimate)):
         sl1 = signal[0:N+1-m]
         sl2 = signal[m:N+1]
         estimate[m] = np.dot(sl1, sl2)
@@ -38,12 +48,12 @@ def linear_predictor(signal, order=3):
 def p_do(idx, signal, order, a):
     return np.abs(signal[idx] + np.dot(a, signal[idx-order:idx]))
 
-def predict_signal(signal, order=3):
+@cython.boundscheck(False) # turn off bounds-checking for entire function
+def predict_signal(np.ndarray[DTYPE_t, ndim=1] signal, order=3):
     a = linear_predictor(signal, order)[::-1]
     print "done with lin predict estim"
     N = len(signal)
-    pred = np.zeros(N)
-    pred[:order] = 0
+    cdef np.ndarray[DTYPE_t, ndim=1] pred = np.zeros(N)
     
     for idx in xrange(order, N):
         pred[idx] = np.abs(signal[idx] + np.dot(a, signal[idx-order:idx]))
@@ -57,22 +67,5 @@ def predict_signal(signal, order=3):
     #plt.show()
     
     return pred
-
-if __name__ == "__main__":
-    
-    #linear_predictor(np.arange(0, 8, 1), 4)
-#     print sig.correlate(np.arange(0, 8, 1), np.arange(0, 8, 1))/(2*7+1)
-    fs = 1000
-    f1 = 10
-    N = 1000000
-    t = np.arange(0,N/fs, 1/fs)
-    signal = np.sin(2*np.pi*f1*t)
-    pred = predict_signal(signal, 10)
-    
-#     f_sig = lfilter([1, -1], [1], signal)
-#     print len(signal)
-#     plt.plot(signal)
-#     plt.plot(pred)
-#     plt.show()
     
     
