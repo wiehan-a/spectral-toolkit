@@ -6,7 +6,7 @@ Created on Sep 12, 2013
 
 from PySide.QtCore import *
 from PySide.QtGui import *
-from datetime import date, timedelta
+from datetime import date, datetime, timedelta
 
 class STDateEdit(QDateEdit):
     
@@ -15,4 +15,13 @@ class STDateEdit(QDateEdit):
     
     def date(self):
         qdate = super(QDateEdit, self).date()
+        return qdate.toPython()
+    
+class STDateTimeEdit(QDateTimeEdit):
+    
+    def __init__(self):
+        QDateTimeEdit.__init__(self, QDateTime(datetime.now() - timedelta(days=1)))
+    
+    def date(self):
+        qdate = self.dateTime()
         return qdate.toPython()

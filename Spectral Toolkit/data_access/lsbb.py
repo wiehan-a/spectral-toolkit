@@ -13,6 +13,8 @@ import utils
 
 from PySide.QtCore import *
 
+SUPPORT_PARTIAL_PROGRESS_REPORTING = True
+
 LSBB_IP_ADRESS = '193.52.13.2'
 LSBB_BASE_URL = 'pub/data/Daily_SEGY_Data/'
 

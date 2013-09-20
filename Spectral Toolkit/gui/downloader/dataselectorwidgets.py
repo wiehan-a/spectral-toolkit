@@ -30,7 +30,7 @@ class DataSelectorWidget(QWidget):
         self.originchooser_hbox.addWidget(origin_label)    
         self.sources_combo = QComboBox(self)
         self.sources_combo.currentIndexChanged.connect(self.origin_changed_slot)
-        self.sources = ['LSBB (France)', 'SANSA (Hermanus)', 'Load from file']
+        self.sources = ['LSBB (France)', 'SANSA (Hermanus)']
         self.sources_combo.addItems(self.sources)
         self.originchooser_hbox.addWidget(self.sources_combo)
         
@@ -61,7 +61,7 @@ class DataSelectorWidget(QWidget):
         return buttons
         
 class DataSelectorWidgetSANSA(QWidget):
-    
+ 
     def __init__(self):
         QWidget.__init__(self)
         
@@ -69,15 +69,62 @@ class DataSelectorWidgetSANSA(QWidget):
         self.main_vbox.setAlignment(Qt.AlignTop)
         self.main_vbox.setContentsMargins(0, 0, 0, 0)
         
-        self.main_vbox.addWidget(QLabel('Not implemented yet (SANSA)'))
+#         self.components_hbox = QHBoxLayout(self)
+#         self.main_vbox.addLayout(self.components_hbox)
+#         components_label = QLabel('Components:', self)
+#         self.components_hbox.addWidget(components_label)
+#         self.components_checkboxes = {sr : [] for sr in self.sampling_rates}
+#         self.components_list = {'125 Hz' : ['HGE', 'HGN', 'HGZ'],
+#                            '500 Hz' : ['CGE', 'CGN', 'CGZ']}
+#         
+#         for sampling_rate in self.sampling_rates:
+#             for component in self.components_list[sampling_rate]:
+#                 tmp_check = QCheckBox(component, self)
+#                 tmp_check.setVisible(False)
+#                 self.components_checkboxes[sampling_rate].append(tmp_check)
+#         
+#         for chkbx in self.components_checkboxes[self.sampling_rates[0]]:
+#             self.components_hbox.addWidget(chkbx)
+#             chkbx.setVisible(True)
+            
+        self.date_hbox = QHBoxLayout(self)
+        self.main_vbox.addLayout(self.date_hbox)
+        start_date_label = QLabel('Start date:')
+        self.date_hbox.addWidget(start_date_label)
+        self.start_date_dateedit = STDateTimeEdit()
+        self.date_hbox.addWidget(self.start_date_dateedit)
+        self.date_hbox.addSpacing(10)
+        end_date_label = QLabel('End date:')
+        self.date_hbox.addWidget(end_date_label)
+        self.end_date_dateedit = STDateTimeEdit()
+        self.date_hbox.addWidget(self.end_date_dateedit)
+        # self.date_hbox.addStretch(1)
+        
+#         self.cache_checkbox = QCheckBox('Cache downloaded data locally')
+#         self.main_vbox.addWidget(self.cache_checkbox)
+#         self.download_only_checkbox = QCheckBox('Download only')
+#         self.main_vbox.addWidget(self.download_only_checkbox)
+              
         
         self.setLayout(self.main_vbox)
-        
+            
     def validate_self(self):
+        start_date = self.start_date_dateedit.date()
+        end_date = self.end_date_dateedit.date()
+        
+        if start_date > end_date:
+            msgBox = QMessageBox();
+            msgBox.setText("Start date must be before end date.");
+            msgBox.setIcon(QMessageBox.Critical)
+            msgBox.exec_();
+            return False
+        
         return True
     
     def annotateParams(self, params):
-        pass
+        params['start_date'] = self.start_date_dateedit.date()
+        params['end_date'] = self.end_date_dateedit.date()
+        params['sampling_rate'] = 125
         
 class DataSelectorWidgetFile(QWidget):
     

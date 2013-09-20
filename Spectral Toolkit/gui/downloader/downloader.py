@@ -24,10 +24,6 @@ class Downloader(QWidget):
         self.setWindowTitle('Spectral Toolkit (Data selection)')
         self.setMinimumWidth(500)
         
-        self.stages = ['Data selection/downloading',
-                       'Confirm download',
-                       'Download']
-        
         self.main_vbox = QVBoxLayout(self)
         self.main_vbox.setAlignment(Qt.AlignTop)
         self.header_title_label = QLabel()
@@ -90,8 +86,9 @@ class Downloader(QWidget):
         if idx != 2:
             self.parameters['source'] = self.hosted_widget.sources[idx].split(' ')[0]
             self.switch_in_new_hosted_widget(DownloadConfirmWidget(self.parameters))
-        else:
-            print 'file'
+            
+        if idx == 1:
+            self.download_confirm_slot()
     
     @Slot()
     def go_back(self):
@@ -111,7 +108,8 @@ class Downloader(QWidget):
         
     @Slot()
     def go_download_more_slot(self):
-        self.switch_in_new_hosted_widget(DataSelectorWidget(), forward=False)
+        self.widget_stack = []
+        self.switch_in_new_hosted_widget(DataSelectorWidget(), forward=True)
     
     def run(self):
         self.show()
@@ -164,23 +162,26 @@ class DownloaderWidget(QWidget):
         self.params = params
         self.parent_ = parent_
         
-        self.file_count = lsbb.get_number_of_files(params)
-        self.file_size = lsbb.get_single_file_size(params)
-        self.overall_size = lsbb.calculate_size(params)
+        self.data_engine = params['access_engine']
+        
+        if self.data_engine.SUPPORT_PARTIAL_PROGRESS_REPORTING:
+            self.file_count = self.data_engine.get_number_of_files(params)
+            self.file_size = self.data_engine.get_single_file_size(params)
+        
+        self.overall_size = self.data_engine.calculate_size(params)
         
         self.main_vbox = QVBoxLayout(self)
         self.main_vbox.setAlignment(Qt.AlignTop)
         self.main_vbox.setContentsMargins(0, 0, 0, 0)
         
-        self.current_progress_label = QLabel()
-        
-        self.main_vbox.addWidget(self.current_progress_label)
-        
-        self.current_progress_bar = QProgressBar()
-        self.current_progress_bar.setMinimum(0)
-        self.current_progress_bar.setMaximum(self.file_size)
-        self.current_progress_bar.setTextVisible(True)
-        self.main_vbox.addWidget(self.current_progress_bar)
+        if self.data_engine.SUPPORT_PARTIAL_PROGRESS_REPORTING:
+            self.current_progress_label = QLabel()
+            self.main_vbox.addWidget(self.current_progress_label)
+            self.current_progress_bar = QProgressBar()
+            self.current_progress_bar.setMinimum(0)
+            self.current_progress_bar.setMaximum(self.file_size)
+            self.current_progress_bar.setTextVisible(True)
+            self.main_vbox.addWidget(self.current_progress_bar)
         
         self.overall_progress_label = QLabel()
         self.main_vbox.addWidget(self.overall_progress_label)
@@ -197,7 +198,7 @@ class DownloaderWidget(QWidget):
                               'cur_file_bytes': 0, 
                               'overall_bytes': 0})
         
-        self.worker = lsbb.DownloaderWorker(self.params)
+        self.worker = self.data_engine.DownloaderWorker(self.params)
         self.wthread = QThread()
         self.worker.moveToThread(self.wthread)
         self.worker.progress_update.connect(self.update_progress)
@@ -223,15 +224,24 @@ class DownloaderWidget(QWidget):
     @Slot(dict)
     def update_progress(self, kwparams):
         
-        kwparams['overall_file_size'] = utils.sizeof_fmt(self.file_size)
-        kwparams['file_count'] = str(self.file_count)
-        kwparams['overall_size'] = utils.sizeof_fmt(self.overall_size)
+        if self.data_engine.SUPPORT_PARTIAL_PROGRESS_REPORTING:
+            kwparams['overall_file_size'] = utils.sizeof_fmt(self.file_size)
+            kwparams['file_count'] = str(self.file_count)
         
+        if 'overall_size' in kwparams:
+            self.overall_size = kwparams['overall_size']
+            self.overall_progress_bar.setMaximum(self.overall_size)
         
-        self.current_progress_label.setText('Current file (' + kwparams['cur_file_number'] + ' of ' + 
-                                            kwparams['file_count'] + '): ' + kwparams['cur_downloaded'] + 
-                                            ' of ' + kwparams['overall_file_size'] + ' downloaded')
-        self.current_progress_bar.setValue(kwparams['cur_file_bytes'])
+        if 'size_unknown' not in kwparams:
+            kwparams['overall_size'] = utils.sizeof_fmt(self.overall_size)
+        else:
+            kwparams['overall_size'] = '? MB'
+        
+        if self.data_engine.SUPPORT_PARTIAL_PROGRESS_REPORTING:
+            self.current_progress_label.setText('Current file (' + kwparams['cur_file_number'] + ' of ' + 
+                                                kwparams['file_count'] + '): ' + kwparams['cur_downloaded'] + 
+                                                ' of ' + kwparams['overall_file_size'] + ' downloaded')
+            self.current_progress_bar.setValue(kwparams['cur_file_bytes'])
         
         self.overall_progress_label.setText('Overall progress: ' + kwparams['overall_downloaded'] + ' of ' + 
                                              kwparams['overall_size'] + ' downloaded')
