@@ -7,6 +7,7 @@ Created on Sep 18, 2013
 from __future__ import division
 
 import utils, time, urllib2, urllib, datetime, os, zlib, struct
+from config import *
 from PySide.QtCore import *
 import numpy as np
 
@@ -14,12 +15,12 @@ SUPPORT_PARTIAL_PROGRESS_REPORTING = False
 SANSA_URL = 'http://geomagnet.ee.sun.ac.za/dbreadusec.php'
 SANSA_READ_BUFFER_SIZE = 1024*1024/4
 
-SANSA_LOCAL_STORAGE_PATH = 'Downloaded Data/SANSA/'
+SANSA_LOCAL_STORAGE_PATH = 'SANSA/'
 
-if not os.path.exists('Downloaded Data/SANSA/'):
-    if not os.path.exists('Downloaded Data/'):
-        os.mkdir('Downloaded Data/')
-    os.mkdir('Downloaded Data/SANSA/')
+if not os.path.exists(config_db['data_folder'] + '/SANSA/'):
+    if not os.path.exists(config_db['data_folder']):
+        os.mkdir(config_db['data_folder'])
+    os.mkdir(config_db['data_folder'] + '/SANSA/')
 
 def sansa_date_format(date):
     return urllib.quote_plus('{:%Y-%m-%d %H:%M:%S}'.format(date))

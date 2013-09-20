@@ -11,6 +11,7 @@ import datetime
 import os.path
 import utils
 
+from config import *
 from PySide.QtCore import *
 
 SUPPORT_PARTIAL_PROGRESS_REPORTING = True
@@ -18,12 +19,12 @@ SUPPORT_PARTIAL_PROGRESS_REPORTING = True
 LSBB_IP_ADRESS = '193.52.13.2'
 LSBB_BASE_URL = 'pub/data/Daily_SEGY_Data/'
 
-LSBB_LOCAL_STORAGE_PATH = 'Downloaded Data/LSBB/'
+LSBB_LOCAL_STORAGE_PATH = '/LSBB/'
 
-if not os.path.exists('Downloaded Data/LSBB/'):
-    if not os.path.exists('Downloaded Data/'):
-        os.mkdir('Downloaded Data/')
-    os.mkdir('Downloaded Data/LSBB/')
+if not os.path.exists(config_db['data_folder'] + '/LSBB/'):
+    if not os.path.exists(config_db['data_folder']):
+        os.mkdir(config_db['data_folder'])
+    os.mkdir(config_db['data_folder'] + '/LSBB/')
     
 class ControlledFTP:
     ftp_connection = None
@@ -150,9 +151,10 @@ class DownloaderWorker(QObject):
         self.done.emit()
     
 def get_local_file_name(date, component, params):
-    if not os.path.exists(LSBB_LOCAL_STORAGE_PATH + str(params['sampling_rate'])):
-        os.mkdir(LSBB_LOCAL_STORAGE_PATH + str(params['sampling_rate']))
-    return LSBB_LOCAL_STORAGE_PATH + str(params['sampling_rate']) + '/{:%Y.%m.%d}.'.format(date) + component + '.segy'
+    sample_dir = config_db['data_folder'] + '/' + LSBB_LOCAL_STORAGE_PATH + str(params['sampling_rate'])
+    if not os.path.exists(sample_dir):
+        os.mkdir(sample_dir)
+    return sample_dir + '/{:%Y.%m.%d}.'.format(date) + component + '.segy'
     
 def build_download_string(date):
     return LSBB_BASE_URL + '{:%Y.%m/%Y.%m.%d}'.format(date)
