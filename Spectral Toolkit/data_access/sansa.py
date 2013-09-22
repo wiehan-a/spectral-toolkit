@@ -83,6 +83,7 @@ class DownloaderWorker(QObject):
         self.size += 10*60
         
         print utils.sizeof_fmt(self.real_size)
+        
         self.progress_update.emit({'overall_downloaded': utils.sizeof_fmt(self.real_size),
                                    'overall_bytes': self.size, 
                                    'size_unknown' : True
@@ -127,6 +128,14 @@ class DownloaderWorker(QObject):
 #                     self.count += 1
 #                      
 #                 sd += datetime.timedelta(days=1)
+
+        db_add_entry(make_file_name(self.params, 'COMP1'), 'SANSA', 
+                     'COMP1', 125, self.params['start_date'], self.params['end_date'])
+        db_add_entry(make_file_name(self.params, 'COMP2'), 'SANSA', 
+                     'COMP2', 125, self.params['start_date'], self.params['end_date'])
+        db_add_entry(make_file_name(self.params, 'COMP3'), 'SANSA', 
+                     'COMP3', 125, self.params['start_date'], self.params['end_date'])
+        save_db()
 
         self.comp_1_file.close()
         self.comp_2_file.close()

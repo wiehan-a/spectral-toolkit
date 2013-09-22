@@ -19,7 +19,7 @@ SUPPORT_PARTIAL_PROGRESS_REPORTING = True
 LSBB_IP_ADRESS = '193.52.13.2'
 LSBB_BASE_URL = 'pub/data/Daily_SEGY_Data/'
 
-LSBB_LOCAL_STORAGE_PATH = '/LSBB/'
+LSBB_LOCAL_STORAGE_PATH = 'LSBB/'
 
 if not os.path.exists(config_db['data_folder'] + '/LSBB/'):
     if not os.path.exists(config_db['data_folder']):
@@ -68,6 +68,15 @@ class ControlledFTP:
         filename = get_local_file_name(date, component, params)
         self.file = open(filename, 'wb')
         self.ftp_connection.retrbinary('RETR '+self.get_path(date, component), self.download_persist_callback, 1024*1024/4)
+        
+        start_time = datetime.datetime.combine(self.params['start_date'], datetime.time())
+        end_time = datetime.datetime.combine(self.params['end_date'] + datetime.timedelta(days=1) - 
+                                             datetime.timedelta(seconds=1), datetime.time())
+        
+        db_add_entry(filename, 'LSBB', component, self.params['sampling_rate'], 
+                     start_time, end_time)
+        
+        save_db()
         self.file.close()
     
     def get_components(self, filelist):
@@ -147,6 +156,7 @@ class DownloaderWorker(QObject):
                     self.count += 1
                      
                 sd += datetime.timedelta(days=1)
+                
                 
         self.done.emit()
     
