@@ -11,11 +11,13 @@ from config import *
 class LibraryModel(QAbstractTableModel):
     
     def __init__(self):
-        
         QAbstractTableModel.__init__(self)
-        
+        self.refreshModel()
+    
+    @Slot()
+    def refreshModel(self):
+        self.beginResetModel()
         get_date = lambda key : db[key]['start_time']
-        
         self.db_flat_view = []
         for key in sorted(db.keys(), key=get_date):
             self.db_flat_view.append([
@@ -23,7 +25,7 @@ class LibraryModel(QAbstractTableModel):
                                          db[key]['source'], db[key]['component'],
                                          db[key]['sampling_rate']
                                      ])
-        
+        self.endResetModel()
     
     def rowCount(self, parent=QModelIndex()):
         return len(self.db_flat_view)
@@ -41,7 +43,6 @@ class LibraryModel(QAbstractTableModel):
     def headerData(self, section, orientation, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
             if orientation == Qt.Horizontal:
-                print 'doing something'
                 return ['Start time', 'End time', 'Data source', 'Component', 'Sampling rate'][section]
 
         return None

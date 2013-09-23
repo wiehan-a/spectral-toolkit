@@ -18,6 +18,7 @@ from gui.stdateedit import *
 class Downloader(QWidget):
     
     widget_stack = []
+    finished_downloading_signal = Signal()
     
     def __init__(self):
 
@@ -103,6 +104,7 @@ class Downloader(QWidget):
     
     @Slot()
     def done_slot(self):
+        self.finished_downloading_signal.emit()
         self.switch_in_new_hosted_widget(DownloadDoneWidget(self.parameters))
         self.main_vbox.setStretchFactor(self.hosted_widget, 2)
         self.hosted_widget.download_more_button.clicked.connect(self.go_download_more_slot)
@@ -131,6 +133,7 @@ class DownloadDoneWidget(QWidget):
         self.main_vbox = QVBoxLayout()
         self.main_hbox.addLayout(self.main_vbox)
         self.main_vbox.setAlignment(Qt.AlignHCenter)
+        self.main_hbox.setStretchFactor(self.main_vbox, 2)
         
         self.exit_button = QPushButton('Exit')
         self.open_folder_button = QPushButton('Open download folder')
