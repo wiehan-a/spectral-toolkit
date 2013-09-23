@@ -15,7 +15,7 @@ SUPPORT_PARTIAL_PROGRESS_REPORTING = False
 SANSA_URL = 'http://geomagnet.ee.sun.ac.za/dbreadusec.php'
 SANSA_READ_BUFFER_SIZE = 1024*1024/4
 
-SANSA_LOCAL_STORAGE_PATH = 'SANSA/'
+SANSA_LOCAL_STORAGE_PATH = '/SANSA/'
 
 if not os.path.exists(config_db['data_folder'] + '/SANSA/'):
     if not os.path.exists(config_db['data_folder']):
@@ -32,8 +32,7 @@ def calculate_size(params):
     return (params['end_date'] - params['start_date']).total_seconds()
 
 def make_file_name(params, comp):
-    #return '{:%Y-%m-%d %H:%M:%S}'.format(params['start_date']) + ' -- ' + '{:%Y-%m-%d %H:%M:%S}'.format(params['start_date'])+'.'+comp
-    return 'DEBUG.'+comp
+    return config_db['data_folder'] + SANSA_LOCAL_STORAGE_PATH+'{:%Y.%m.%d.%H.%M.%S}'.format(params['start_date']) + '.' + '{:%Y.%m.%d.%H.%M.%S}'.format(params['end_date'])+'.'+comp
 
 class DownloaderWorker(QObject):
     

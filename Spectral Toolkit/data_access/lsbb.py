@@ -69,11 +69,11 @@ class ControlledFTP:
         self.file = open(filename, 'wb')
         self.ftp_connection.retrbinary('RETR '+self.get_path(date, component), self.download_persist_callback, 1024*1024/4)
         
-        start_time = datetime.datetime.combine(self.params['start_date'], datetime.time())
-        end_time = datetime.datetime.combine(self.params['end_date'] + datetime.timedelta(days=1) - 
+        start_time = datetime.datetime.combine(params['start_date'], datetime.time())
+        end_time = datetime.datetime.combine(params['end_date'] + datetime.timedelta(days=1) - 
                                              datetime.timedelta(seconds=1), datetime.time())
         
-        db_add_entry(filename, 'LSBB', component, self.params['sampling_rate'], 
+        db_add_entry(filename, 'LSBB', component, params['sampling_rate'], 
                      start_time, end_time)
         
         save_db()
