@@ -80,6 +80,9 @@ def db_add_entry(filename, source, component, sampling_rate, start_time, end_tim
                         'end_time' : end_time,
                         'sampling_rate' : sampling_rate
                        }
+    
+def db_get_entry_count():
+    return len(db)
 
 try:
     with open(DB_FILENAME) as f:
@@ -96,6 +99,3 @@ except IOError:
     initialize_config()
 except ValueError:
     initialize_config()
-    
-print db
-
