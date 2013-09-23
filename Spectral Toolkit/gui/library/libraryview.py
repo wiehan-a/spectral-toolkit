@@ -47,7 +47,7 @@ class Library(QWidget):
         self.analyze_button = QPushButton('Perform spectral analysis')
         self.action_bar_hbox.addWidget(self.analyze_button)
         
-        self.filter_widget = LibraryFilterWidget()
+        self.filter_widget = LibraryFilterWidget(self.table_model)
         self.right_vbox.addWidget(self.filter_widget)
         
         self.main_hbox.setStretchFactor(self.left_vbox, 2)

@@ -7,25 +7,28 @@ Created on Sep 23, 2013
 from PySide.QtCore import *
 from PySide.QtGui import *
 
+import librarymodel
 from config import *
 import operator
 from gui.stdateedit import STDateTimeEdit
 
+operator_map = {
+                    '<' : operator.lt,
+                    '<=' : operator.le,
+                    '>' : operator.gt,
+                    '>=' : operator.ge,
+                    '=' : operator.eq,
+                    '!=' : operator.ne
+                }
+
+operators = operator_map.keys()
+
 class LibraryFilterWidget(QWidget):
     
-    operator_map = {
-                        '<' : operator.lt,
-                        '<=' : operator.le,
-                        '>' : operator.gt,
-                        '>=' : operator.ge,
-                        '=' : operator.eq,
-                        '!=' : operator.ne
-                    }
-    
-    operators = operator_map.keys()
-    
-    def __init__(self):
+    def __init__(self, model):
         QWidget.__init__(self)
+        
+        self.model = model
         
         self.main_vbox = QVBoxLayout(self)
         self.main_vbox.setAlignment(Qt.AlignTop)
@@ -38,35 +41,78 @@ class LibraryFilterWidget(QWidget):
         
         prototype = db[db.keys()[0]]
         for key, value in prototype.iteritems():
-            print key, value, type(value)
-            layout = QHBoxLayout()
-            use = QCheckBox()
-            layout.addWidget(use)
-            label = QLabel(key)
-            layout.addWidget(label)
-            combo = QComboBox()
-            combo.addItems(self.operators)
-            layout.addWidget(combo)
-            self.filter_widgets.append(layout)
-            layout.addStretch()
-            
-            edit_field = None
-            
-            if isinstance(value, datetime.datetime):
-                edit_field = STDateTimeEdit()
-            else:
-                edit_field = QLineEdit()
-            
-            layout.addWidget(edit_field)
+            self.filter_widgets.append(FilterItemWidget(key, value))
+
             
         for fw in self.filter_widgets:
             self.main_vbox.addLayout(fw)
             
+        self.main_vbox.addStretch()
+            
         self.action_bar_hbox = QHBoxLayout()
         self.main_vbox.addLayout(self.action_bar_hbox)
-        self.filter_button = QPushButton('Filter')
+        self.reset_view_button = QPushButton('Reset view')
+        self.action_bar_hbox.addWidget(self.reset_view_button)
         self.action_bar_hbox.addStretch()
+        self.filter_button = QPushButton('Apply filter')
+        self.filter_button.clicked.connect(self.apply_filter_slot)
         self.action_bar_hbox.addWidget(self.filter_button)
+        
+    @Slot()
+    def apply_filter_slot(self):
+        self.model.applyFilters([w.makeFilter() for w in self.filter_widgets])
+    
+class FilterItemWidget(QHBoxLayout):
+    
+    def __init__(self, key, prototype):
+        QHBoxLayout.__init__(self)
+        
+        self.key = key
+        self.prototype = prototype
+                    
+        self.use_chkbox = QCheckBox()
+        self.addWidget(self.use_chkbox)
+        self.label = QLabel(librarymodel.headers_db_pretty_map[key])
+        self.addWidget(self.label)
+        self.operator_combo = QComboBox()
+        self.operator_combo.addItems(operators)
+        self.addWidget(self.operator_combo)
+        
+        self.addStretch()
+        
+        self.edit_field = None
+        
+        if isinstance(prototype, datetime.datetime):
+            self.edit_field = STDateTimeEdit()
+        else:
+            self.edit_field = QLineEdit()
+        
+        self.addWidget(self.edit_field)
+        
+    def makeFilter(self):
+        value = None
+        
+        if self.use_chkbox.isChecked():
+            if isinstance(self.prototype, datetime.datetime):
+                value = self.edit_field.date()
+            elif isinstance(self.prototype, int):
+                value = int(self.edit_field.text())
+            else:
+                value = self.edit_field.text()
+        
+        return Filter(value, self.key, operator_map[operators[self.operator_combo.currentIndex()]])
+    
+class Filter():
+    
+    def __init__(self, value, key, operator):
+        self.value = value
+        self.operator = operator
+        self.key = key
+    
+    def apply(self, entry):
+        if self.value is None:
+            return True
+        return self.operator(entry[librarymodel.headers_db_indices[self.key]], self.value)
         
     
     
