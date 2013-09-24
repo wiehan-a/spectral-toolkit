@@ -31,6 +31,8 @@ class Library(QWidget):
         self.table_model = LibraryModel()
         self.table.setModel(self.table_model)
         self.left_vbox.addWidget(self.table)
+        verthead = self.table.verticalHeader()
+        verthead.setDefaultSectionSize(verthead.fontMetrics().height()+4)
         
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.resizeColumnsToContents()
@@ -51,6 +53,25 @@ class Library(QWidget):
         self.right_vbox.addWidget(self.filter_widget)
         
         self.main_hbox.setStretchFactor(self.left_vbox, 2)
+        
+        self.table.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.table.customContextMenuRequested.connect(self.tableContextMenu)
+        
+    @Slot(QPoint)
+    def tableContextMenu(self, point):
+        menu = QMenu()
+        menu.addAction('Display time domain')
+        menu.addSeparator()
+        menu.addAction('Downsample')
+        menu.addAction('Discontinuity tool')
+        menu.addAction('Spectral normalisation')
+        menu.addAction('Spectral analysis')
+        menu.addSeparator()
+        menu.addAction('Export to MATLAB')
+        menu.addAction('Export to Python/Numpy')
+        menu.addSeparator()
+        menu.addAction('Delete')
+        menu.exec_(QCursor.pos())
         
     @Slot()
     def download_more_slot(self):
