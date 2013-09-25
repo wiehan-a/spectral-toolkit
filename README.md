@@ -8,6 +8,7 @@ Dependencies:
 * PySide 1.2.1
 * SciPy 0.12.0 (temporary)
 * Cython 0.19.1
+* pyFFTW (bundled)
 
 Windows installers:
 * http://www.lfd.uci.edu/~gohlke/pythonlibs/
