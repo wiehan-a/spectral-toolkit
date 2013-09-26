@@ -9,9 +9,13 @@ from PySide.QtCore import *
 import sys, os
 from gui.downloader.downloader import Downloader
 from gui.library.libraryview import Library
+ 
+# qt_app = QApplication(sys.argv)
+#  
+# app = Library()
+# app.run()
+# qt_app.exec_()
 
-qt_app = QApplication(sys.argv)
-
-app = Library()
-app.run()
-qt_app.exec_()
+import benchmarks.convolution
+ 
+sys.exit()
