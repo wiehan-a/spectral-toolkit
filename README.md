@@ -6,9 +6,8 @@ Dependencies:
 * Python 2.7
 * Numpy 1.7
 * PySide 1.2.1
-* SciPy 0.12.0 (temporary)
 * Cython 0.19.1
-* pyFFTW (bundled)
+* FFTW3-3 (bundled)
 
 Windows installers:
 * http://www.lfd.uci.edu/~gohlke/pythonlibs/
