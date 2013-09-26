@@ -19,6 +19,7 @@ from cython.parallel import prange, parallel
 from cython.parallel cimport prange, parallel
 
 from libc.stdlib cimport abort, malloc, free
+from libc.string cimport memcpy
 
 @cython.boundscheck(False)
 def slow_convolve(np.ndarray[np.float64_t, ndim=1] x not None,
@@ -63,13 +64,18 @@ def fast_convolve(np.ndarray[np.float64_t, ndim=1] x not None,
     
     y[n] = sum[k = 0:N](x[n-k]*h[k])
     '''
-    cdef Py_ssize_t M = len(h)
-    cdef Py_ssize_t N = int(2 ** (np.ceil(np.log2(4 * (M - 1)))))
-    cdef Py_ssize_t L = N - M + 1
-    cdef Py_ssize_t X = len(x)
+    cdef int M = len(h)
+    cdef int N = int(2 ** (np.ceil(np.log2(4 * (M - 1)))))
+    cdef int L = N - M + 1
+    cdef int X = len(x)
+    print N, X
+    import time
+    time.sleep(10)
     cdef Py_ssize_t out_start = 0
     cdef Py_ssize_t start = L - (M - 1) - 1
     cdef np.ndarray[np.complex128_t, ndim = 1] H_ = fft.rfft(h, N)
+    
+
     
     if out_buffer is None:
         out_buffer = np.zeros(shape=(X,), dtype=x.dtype)
@@ -122,17 +128,17 @@ def fast_convolve(np.ndarray[np.float64_t, ndim=1] x not None,
 #       
 #     return out_buffer
 
-cdef void mult_dfts(size_t N, fftw_complex * A, fftw_complex * B) nogil:
+cdef void mult_dfts(int N, fftw_complex * A, fftw_complex * B) nogil:
     '''
         Perform the N-point complex multiplication a*b and store the result in b
     '''
-    cdef int idx
+    cdef int idxx
     cdef double a, b, c, d
-    for idx in xrange(N):
-        a = A[idx][0]; b = A[idx][1]
-        c = B[idx][0]; d = B[idx][1]
-        B[idx][0] = a * c - b * d
-        B[idx][1] = b * c + a * d
+    for idxx in xrange(N):
+        a = A[idxx][0]; b = A[idxx][1]
+        c = B[idxx][0]; d = B[idxx][1]
+        B[idxx][0] = a * c - b * d
+        B[idxx][1] = b * c + a * d
 
 def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
                   np.ndarray[np.float64_t, ndim=1] h not None,
@@ -145,12 +151,20 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
     The FFTW3 library is invoked and chunks are executed in parallel
     
     y[n] = sum[k = 0:N](x[n-k]*h[k])
+    
+    TODO: check for failure conditions and handle them more gracefully
     '''
+    
+    fftw_import_wisdom_from_filename('fftw_wisdom')
+    
     cdef Py_ssize_t M = len(h)
     cdef Py_ssize_t X = len(x)
-    cdef Py_ssize_t L = 2**int((np.log2(M*16))) + 1
-    cdef Py_ssize_t N = L + M - 1
+    
+    cdef Py_ssize_t N = 2 ** int((np.log2(M * 4)))
+    cdef Py_ssize_t L = N - M + 1
+        
 
+    
     cdef Py_ssize_t out_start = 0
     cdef Py_ssize_t start = L - (M - 1) - 1
     cdef double * input_buffer = < double *> x.data
@@ -158,8 +172,10 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
     cdef np.ndarray[np.float64_t, ndim = 1] h_zero_padded = np.hstack((h, np.zeros(N - M)))
     
     # calculate FFT of h
-    cdef fftw_plan forward_plan = fftw_plan_dft_r2c_1d(N, < double *> h_zero_padded.data, < fftw_complex *> H_.data, FFTW_PRESERVE_INPUT | FFTW_MEASURE)
+    cdef fftw_plan forward_plan = fftw_plan_dft_r2c_1d(N, < double *> h_zero_padded.data, < fftw_complex *> H_.data, FFTW_PRESERVE_INPUT)
     fftw_execute(forward_plan)
+    
+
     
     if out_buffer is None:
         out_buffer = np.empty(shape=(X,), dtype=np.float64)
@@ -173,10 +189,11 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
     mult_dfts(N / 2 + 1, < fftw_complex *> H_.data, outblock)
     
     cdef int idx3 = 0
-   
+    
+
     
     cdef double * real_outblock = < double *> fftw_alloc_real(N)
-    cdef fftw_plan backward_plan = fftw_plan_dft_c2r_1d(N, outblock, real_outblock, FFTW_MEASURE)
+    cdef fftw_plan backward_plan = fftw_plan_dft_c2r_1d(N, outblock, real_outblock, FFTW_PATIENT)
 
     fftw_execute(backward_plan)
     
@@ -187,34 +204,38 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
     cdef int idx, idx2
     cdef fftw_complex * local_out_block
     cdef double * local_real_out_block
-
+    
+    import time
     with nogil, parallel(num_threads=8):
-        local_out_block = < fftw_complex *> fftw_alloc_complex(N / 2 + 1)
-        local_real_out_block = < double *> fftw_alloc_real(N)
-        
-        for idx in prange(L - (M - 1), X - 1, L):
-            fftw_execute_dft_r2c(forward_plan, input_buffer + idx, local_out_block)
+        local_out_block = < fftw_complex *> fftw_alloc_complex(N)
+        local_real_out_block = < double *> fftw_alloc_real(N)  
+        for idx in prange(L - (M - 1), X - (X % L) + 1, L):
+            
+            memcpy(local_real_out_block, & input_buffer[idx], N * sizeof(double))
+            fftw_execute_dft_r2c(forward_plan, local_real_out_block , local_out_block)
             mult_dfts(N / 2 + 1, < fftw_complex *> H_.data, local_out_block)
             fftw_execute_dft_c2r(backward_plan, local_out_block, local_real_out_block)
             for idx2 in xrange(M - 1, N):
                 output_data[idx + idx2] = local_real_out_block[idx2] / N
-       
+
+        
     cdef int last = idx + L
     cdef np.ndarray[np.float64_t, ndim = 1] last_block
 
     if last < X:
         last_block = np.hstack((x[last:], np.zeros(shape=(N - (X - last),), dtype=np.float64)))
-
+ 
         local_out_block = < fftw_complex *> fftw_alloc_complex(N / 2 + 1)
         fftw_execute_dft_r2c(forward_plan, < double *> last_block.data, local_out_block)
         mult_dfts(N / 2 + 1, < fftw_complex *> H_.data, local_out_block)
         local_real_out_block = < double *> fftw_alloc_real(N)
         fftw_execute_dft_c2r(backward_plan, local_out_block, local_real_out_block)
-        
+         
         idx2 = 0
         for idx2 in xrange(M - 1, M - 1 + X % L):
              output_data[last + idx2] = local_real_out_block[idx2] / N
-        
+#         
+    fftw_export_wisdom_to_filename('fftw_wisdom')
     return out_buffer
     
 #     fftw_destroy_plan(plan)

@@ -23,9 +23,7 @@ class build_ext_subclass(build_ext):
         if self.compiler.compiler_type == 'msvc':
             for e in self.extensions:
                 e.include_dirs = [numpy.get_include(), 
-                                  os.path.join('external_libs', 'include', 'msvc_2008'),
-                                  os.path.join('external_libs', 'include'),
-                                  os.path.join('external_libs', 'include', 'win')]
+                                  os.path.join('fftw_wrapper'),]
                 e.extra_compile_args = ['/openmp']
                 e.libraries = [os.path.join('libfftw3-3')]
         else:

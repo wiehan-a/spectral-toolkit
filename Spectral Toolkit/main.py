@@ -16,6 +16,9 @@ from gui.library.libraryview import Library
 # app.run()
 # qt_app.exec_()
 
-import benchmarks.convolution
+from data_processing.convolution import *
+import numpy as np
+
+
  
 sys.exit()
