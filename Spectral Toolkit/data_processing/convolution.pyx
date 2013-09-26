@@ -155,27 +155,22 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
     TODO: check for failure conditions and handle them more gracefully
     '''
     
-    fftw_import_wisdom_from_filename('fftw_wisdom')
+    cdef int M = len(h)
+    cdef int X = len(x)
     
-    cdef Py_ssize_t M = len(h)
-    cdef Py_ssize_t X = len(x)
-    
-    cdef Py_ssize_t N = 2 ** int((np.log2(M * 4)))
-    cdef Py_ssize_t L = N - M + 1
-        
+    cdef int N = 2 ** int((np.log2(M * 4)))
+    cdef int L = N - M + 1
 
-    
-    cdef Py_ssize_t out_start = 0
-    cdef Py_ssize_t start = L - (M - 1) - 1
+    cdef int out_start = 0
+    cdef int start = L - (M - 1) - 1
     cdef double * input_buffer = < double *> x.data
     cdef np.ndarray[np.complex128_t, ndim = 1] H_ = np.zeros(shape=(N,), dtype=np.complex128)
-    cdef np.ndarray[np.float64_t, ndim = 1] h_zero_padded = np.hstack((h, np.zeros(N - M)))
-    
-    # calculate FFT of h
-    cdef fftw_plan forward_plan = fftw_plan_dft_r2c_1d(N, < double *> h_zero_padded.data, < fftw_complex *> H_.data, FFTW_PRESERVE_INPUT)
+    cdef np.ndarray[np.float64_t, ndim = 1] h_zero_padded = np.zeros(shape=(N,), dtype=np.float64)
+        
+    # create the forward plan. this clobbers h_zero_padded
+    cdef fftw_plan forward_plan = fftw_plan_dft_r2c_1d(N, < double *> h_zero_padded.data, < fftw_complex *> H_.data, FFTW_MEASURE)
+    memcpy(& h_zero_padded.data[0], & h.data[0], M * sizeof(double))
     fftw_execute(forward_plan)
-    
-
     
     if out_buffer is None:
         out_buffer = np.empty(shape=(X,), dtype=np.float64)
@@ -184,6 +179,8 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
     
     cdef np.ndarray[np.float64_t, ndim = 1] first_block = np.hstack((np.zeros(M - 1), x[0:L]))
     cdef fftw_complex * outblock = < fftw_complex *> fftw_alloc_complex(N / 2 + 1)
+    cdef double * real_outblock = < double *> fftw_alloc_real(N)
+    cdef fftw_plan backward_plan = fftw_plan_dft_c2r_1d(N, outblock, real_outblock, FFTW_MEASURE)
     fftw_execute_dft_r2c(forward_plan, < double *> first_block.data, outblock)
     
     mult_dfts(N / 2 + 1, < fftw_complex *> H_.data, outblock)
@@ -192,8 +189,8 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
     
 
     
-    cdef double * real_outblock = < double *> fftw_alloc_real(N)
-    cdef fftw_plan backward_plan = fftw_plan_dft_c2r_1d(N, outblock, real_outblock, FFTW_PATIENT)
+    
+    
 
     fftw_execute(backward_plan)
     
@@ -233,9 +230,10 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
          
         idx2 = 0
         for idx2 in xrange(M - 1, M - 1 + X % L):
-             output_data[last + idx2] = local_real_out_block[idx2] / N
-#         
-    fftw_export_wisdom_to_filename('fftw_wisdom')
+            output_data[last + idx2] = local_real_out_block[idx2] / N
+         
+    fftw_destroy_plan(forward_plan)
+    fftw_destroy_plan(backward_plan)
     return out_buffer
     
 #     fftw_destroy_plan(plan)

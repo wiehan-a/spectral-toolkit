@@ -35,7 +35,8 @@ class build_ext_subclass(build_ext):
         build_ext.build_extensions(self)
 
 ext_modules = [Extension("data_processing.sigproc", ["data_processing/sigproc.pyx"]),
-               Extension("data_processing.convolution", ["data_processing/convolution.pyx"])]
+               Extension("data_processing.convolution", ["data_processing/convolution.pyx"]),
+               Extension("fftw_wrapper.fftw_py", ["fftw_wrapper/fftw_py.pyx"]) ]
 
 setup(
   name='Spectral Toolkit',

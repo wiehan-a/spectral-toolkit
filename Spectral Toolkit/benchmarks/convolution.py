@@ -8,8 +8,8 @@ from data_processing.convolution import *
 import numpy as np
 import time
 
-arrx = np.arange(0, 1022400, 1, dtype=np.float64)
-arry = np.arange(0, 120, 1, dtype=np.float64)
+arrx = np.arange(0, 102000000, 1, dtype=np.float64)
+arry = np.arange(0, 1200, 1, dtype=np.float64)
 
 print len(arrx), len(arry)
 
@@ -18,7 +18,7 @@ print len(arrx), len(arry)
 #arry = np.array([7,1,8], dtype=np.float64)
 
 # fast_convolve_fftw(arrx, arry)
-
+# fast_convolve_fftw_w(arrx, arry)
 start_time = time.clock()
 #fast_convolve_fftw_w(arrx, arry)
 x = fast_convolve_fftw_w(arrx, arry)
