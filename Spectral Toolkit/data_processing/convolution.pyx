@@ -69,8 +69,7 @@ def fast_convolve(np.ndarray[np.float64_t, ndim=1] x not None,
     cdef int L = N - M + 1
     cdef int X = len(x)
     print N, X
-    import time
-    time.sleep(10)
+
     cdef Py_ssize_t out_start = 0
     cdef Py_ssize_t start = L - (M - 1) - 1
     cdef np.ndarray[np.complex128_t, ndim = 1] H_ = fft.rfft(h, N)
@@ -140,6 +139,7 @@ cdef void mult_dfts(int N, fftw_complex * A, fftw_complex * B) nogil:
         B[idxx][0] = a * c - b * d
         B[idxx][1] = b * c + a * d
 
+@cython.boundscheck(False)
 def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
                   np.ndarray[np.float64_t, ndim=1] h not None,
                   np.ndarray[np.float64_t, ndim=1] out_buffer=None):
@@ -214,6 +214,10 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
             fftw_execute_dft_c2r(backward_plan, local_out_block, local_real_out_block)
             for idx2 in xrange(M - 1, N):
                 output_data[idx + idx2] = local_real_out_block[idx2] / N
+                
+        #Destroy thread, local buffers:
+        fftw_free(local_out_block)
+        fftw_free(local_real_out_block)
 
         
     cdef int last = idx + L
@@ -232,8 +236,12 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
         for idx2 in xrange(M - 1, M - 1 + X % L):
             output_data[last + idx2] = local_real_out_block[idx2] / N
          
+        fftw_free(local_out_block)
+        fftw_free(local_real_out_block)
+        
     fftw_destroy_plan(forward_plan)
     fftw_destroy_plan(backward_plan)
+    
     return out_buffer
     
 #     fftw_destroy_plan(plan)

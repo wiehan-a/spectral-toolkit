@@ -29,6 +29,8 @@ cdef extern from 'fftw3.h':
 	int fftw_export_wisdom_to_filename(const char *filename)
 	int fftw_import_wisdom_from_filename(const char *filename)
 
+	int fftw_init_threads()
+	void fftw_plan_with_nthreads(int nthreads)
 
 # Direction enum
 cdef enum:

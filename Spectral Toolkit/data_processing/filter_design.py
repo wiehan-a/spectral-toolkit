@@ -10,7 +10,7 @@ import warnings
 import matplotlib.pyplot as plt
 import numpy.fft as fft
 
-def bessel_first_kind_order_zero(x, tolerance=1e-9, max_iters=100):
+def bessel_first_kind_order_zero(x, tolerance=1e-20, max_iters=1000):
     '''
         Calculates the modified Bessel function of the first
         kind at x.
@@ -61,8 +61,9 @@ def design_low_pass_fir(fc, delta_f, att, sampling_rate):
     wn = beta * np.sqrt((1 - np.square(n_centered / alpha)))
     bessel_vectorized = np.vectorize(bessel_first_kind_order_zero)
     wn = bessel_vectorized(wn)
-    ideal_filter = 2 * fc / sampling_rate * np.sinc(2 * fc / sampling_rate * n_centered)
+    ideal_filter = 2 * fc / sampling_rate * np.sinc(2 * fc / sampling_rate * (n_centered))
     
+    #return wn
     return wn * ideal_filter
     
 if __name__ == '__main__':

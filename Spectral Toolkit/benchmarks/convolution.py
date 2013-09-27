@@ -8,8 +8,12 @@ from data_processing.convolution import *
 import numpy as np
 import time
 
-arrx = np.arange(0, 102000000, 1, dtype=np.float64)
-arry = np.arange(0, 1200, 1, dtype=np.float64)
+from data_processing.filter_design import *
+
+from data_access.segy import *
+
+arrx = read_in_segy(['2011.08.04-00.00.00.FR.MGN.00.CGE.SEGY'])
+arry = design_low_pass_fir(100, 1, 120, 500)
 
 print len(arrx), len(arry)
 
@@ -28,5 +32,5 @@ print 'fast convolve fftw_w', after_fast_convolve_fftw_w - start_time
 y = np.convolve(arrx, arry)[:-len(arry)+1]
 after_npconvolve = time.clock()
 print 'numpy convolve', after_npconvolve - after_fast_convolve_fftw_w
-
+ 
 print 'Mean square error: ', np.sum(np.abs(x - y)/len(arrx))

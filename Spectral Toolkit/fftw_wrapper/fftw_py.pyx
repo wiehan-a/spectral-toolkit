@@ -21,6 +21,10 @@ def real_fft(np.ndarray[np.float64_t, ndim=1] x, N):
     
     Returns new numpy.complex128 array of length N/2 + 1
     '''
+    
+    fftw_init_threads()
+    fftw_plan_with_nthreads(8)
+    
     cdef np.ndarray[np.complex128_t] out_buffer = np.empty(shape=(N / 2 + 1), dtype=np.complex128)
     
     if(len(x) < N):

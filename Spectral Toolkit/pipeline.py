@@ -4,7 +4,7 @@ Created on Sep 4, 2013
 @author: Wiehan
 '''
 from __future__ import division
-import time, util
+import time, utils
 import numpy as np
 from data_access.segy import *
 import scipy.signal as sig
@@ -39,7 +39,7 @@ FREQUENCY_RESOLUTION_FACTOR = 0.2
     autogregressive
     
 '''
-ESTIMATION_MODE = 'bartlett'
+ESTIMATION_MODE = 'periodogram'
 DRAW_ESTIMATED_SPECTRUM = True
 
 
