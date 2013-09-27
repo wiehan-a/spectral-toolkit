@@ -11,6 +11,9 @@ import numpy, os
     are not distributed with it, this script should be invoked
     with 'python setup.py build_ext --inplace' before running the 
     software for the first time.
+    
+    Ensure that the proper libraries such as OpenMP and FFTW are installed
+    and available.
 
 '''
 
@@ -37,6 +40,7 @@ class build_ext_subclass(build_ext):
 ext_modules = [Extension("data_processing.sigproc", ["data_processing/sigproc.pyx"]),
                Extension("data_processing.convolution", ["data_processing/convolution.pyx"]),
                Extension("data_processing.windowing", ["data_processing/windowing.pyx"]),
+               Extension("data_processing.multirate", ["data_processing/multirate.pyx"]),
                Extension("fftw_wrapper.fftw_py", ["fftw_wrapper/fftw_py.pyx"]),
                 ]
 
