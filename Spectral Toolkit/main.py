@@ -78,7 +78,7 @@ plt.show()
 # plt.plot((0.025 / len(transform)) * np.arange(len(transform)), 10 * np.log10(transform))
 
 x = time.clock()
-transform = bartlett(data, 4, interpolation_factor=15)
+transform = welch(data, 3*len(data)/4, interpolation_factor=15)
 print time.clock() - x
 plt.plot((0.025 / len(transform)) * np.arange(len(transform)), 10 * np.log10(transform))
 plt.show()

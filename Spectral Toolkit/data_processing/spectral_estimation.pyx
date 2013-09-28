@@ -10,7 +10,7 @@ cimport numpy as np
 import windowing
 import fftw_wrapper.fftw_py as mfftw
 
-def periodogram(signal, window=windowing.apply_blackman, interpolation_factor=1):
+def periodogram(signal, window=windowing.apply_blackman, interpolation_factor=1, inplace_windowing=False):
     '''
     Performs the periodogram spectral estimation technique on
     the data.
@@ -27,29 +27,13 @@ def periodogram(signal, window=windowing.apply_blackman, interpolation_factor=1)
     N = len(signal)
 
     if window is not None:
-        signal = window(signal)
+        signal = window(signal, inplace=inplace_windowing)
 
     fft_ = mfftw.real_fft(signal, interpolation_factor * N)
     fft_ = np.abs(fft_)
     fft_ = np.square(fft_)
     
     return fft_ / N
-
-# def welch(data):
-#     pass
-# 
-# def stft(data, windowlength, zp_fact=1):
-#     N = len(data)
-#     K = windowlength
-#     
-#     if N % K != 0:
-#         raise Exception()
-#     
-#     R = N / K
-#     data = data.reshape(R, K)
-#     data = np.apply_along_axis(periodogram, 1, data, sig.hanning, zp_fact)
-#     return R, data    
-# 
 
 def bartlett(signal, K, window=windowing.apply_blackman, interpolation_factor=1):
     '''
@@ -81,6 +65,37 @@ def bartlett(signal, K, window=windowing.apply_blackman, interpolation_factor=1)
         output_buffer += periodogram(signal[idx:idx + segment_width], window, interpolation_factor=interpolation_factor)
         
     return output_buffer / K
+
+def welch(signal, W, window=windowing.apply_blackman, interpolation_factor=1):
+    '''
+    Performs the welch spectral estimation technique on
+    the data. It calculates len(signal)-W, overlapping periodograms
+    and averages them together. This results in better variance
+    but decreased spectral resolution.
+    
+    signal - the vector being analysed
+    W      - width of sliding window
+    window - any function that accepts a vector and adheres to
+             the interface specified in the windowing module
+    interpolation_factor - specifies the length of the frequency
+             vector: len(signal)*interpolation_factor
+             
+    Returns a frequency vector.
+    
+    TODO: This can be optimised:
+        1) More parallelism exploited
+        2) Avoid unnecessary buffer allocations
+        3) Avoid recomputing the window function every time
+    '''
+
+    cdef np.ndarray[dtype = np.float64_t] output_buffer = np.zeros((W * interpolation_factor / 2 + 1,), dtype=np.float64)
+    cdef int idx = 0
+    
+    for idx in xrange(0, len(signal)-W, 1):
+        output_buffer += periodogram(signal[idx:idx + W], window, interpolation_factor=interpolation_factor)
+        
+    return output_buffer / idx
+
 
 # if __name__ == '__main__':
 #     import matplotlib.pyplot as plt
