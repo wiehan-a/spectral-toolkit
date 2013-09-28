@@ -63,7 +63,10 @@ def design_low_pass_fir(fc, delta_f, att, sampling_rate):
     wn = bessel_vectorized(wn)
     ideal_filter = 2 * fc / sampling_rate * np.sinc(2 * fc / sampling_rate * (n_centered))
     
-    return wn * ideal_filter
+    filter = wn * ideal_filter
+    filter /= np.sum(filter)
+    
+    return filter
     
 if __name__ == '__main__':
     filter = design_low_pass_fir(60, 1, 120, 125)

@@ -46,7 +46,8 @@ def read_segy_data(filename, head):
      
     transducer_coefficient = 1 / (20 * 0.83)
     sensitivity = 2 * 20 / (2 ** 32)
-    data = -(data - np.mean(data)) * sensitivity / transducer_coefficient
+    # data = -(data - np.mean(data)) * sensitivity / transducer_coefficient
+    data = -(data) * sensitivity / transducer_coefficient
  
     return np.array(data)
 

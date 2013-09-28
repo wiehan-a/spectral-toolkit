@@ -30,6 +30,8 @@ def apply_blackman(np.ndarray[dtype=np.float64_t] signal, inplace=True):
     
     cdef int N = len(signal)
     
+    print signal
+    
     cdef np.ndarray[dtype = np.float64_t] out_buffer = signal
     if not inplace:
         out_buffer = np.empty(shape=(len(signal),), dtype=np.float64)

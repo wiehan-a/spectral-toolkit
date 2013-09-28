@@ -15,25 +15,27 @@ import numpy as np
 from data_processing.filter_design import *
 from data_processing.convolution import *
 from data_processing.windowing import *
+from data_processing.multirate import *
+from data_processing.spectral_estimation import *
 
 mfftw.import_wisdom()
  
-#import benchmarks.convolution
+# import benchmarks.convolution
 
 from data_access.segy import *
 
 # import benchmarks.convolution
 
-data = read_in_segy(['2011.08.04-00.00.00.FR.MGN.00.CGE.SEGY'])
+data = read_in_segy(['2011.08.04-00.00.00.FR.MGN.00.CGE.SEGY', '2011.08.05-00.00.00.FR.MGN.00.CGE.SEGY', '2011.08.06-00.00.00.FR.MGN.00.CGE.SEGY'])
 
 # plt.plot(data)
 # plt.show()
 
-filter = design_low_pass_fir(1, 0.1, 120, 500)
-print len(filter)
-print filter
-
-N = 10*len(filter)
+# filter = design_low_pass_fir(10, 0.1, 120, 500)
+# print len(filter)
+# print filter
+# 
+# N = 10*len(filter)
 # FILT = mfftw.real_fft(filter, N)
 # plt.plot(500.0*np.arange(N/2+1)/N/2, 10*np.log10(np.abs(FILT)))
 # plt.show()
@@ -47,20 +49,38 @@ N = 10*len(filter)
 # plt.plot(500.0*np.arange(N/2+1)/N, 20*np.log10(np.abs(FILT)))
 # plt.show()
 
-x = time.clock()
-data = fast_convolve_fftw_w(data, filter)
-print time.clock() - x
+# x = time.clock()
+# data = fast_convolve_fftw_w(data, filter)
+# print time.clock() - x
 
 # plt.plot(data)
 # plt.show()
+
+print len(data)
 x = time.clock()
-apply_blackman(data)
+data = decimate(data, 10, 500)
+data = decimate(data, 10, 500 / 10)
+data = decimate(data, 10, 500 / 100)
+data = decimate(data, 10, 0.5)
 print time.clock() - x
+print len(data)
+
+plt.plot(data)
+plt.show()
+
+# x = time.clock()
+# apply_blackman(data)
+# print time.clock() - x
+ 
+# x = time.clock()
+# transform = periodogram(data, interpolation_factor=15)
+# print time.clock() - x
+# plt.plot((0.025 / len(transform)) * np.arange(len(transform)), 10 * np.log10(transform))
 
 x = time.clock()
-transform = mfftw.real_fft(data, len(data))
+transform = bartlett(data, 4, interpolation_factor=15)
 print time.clock() - x
-plt.plot((250.0/len(transform))*np.arange(len(transform)), 20*np.log10(np.abs(transform)))
+plt.plot((0.025 / len(transform)) * np.arange(len(transform)), 10 * np.log10(transform))
 plt.show()
 
 # qt_app = QApplication(sys.argv)
@@ -69,7 +89,7 @@ plt.show()
 # app.run()
 # qt_app.exec_()
 
-#from data_processing.convolution import *
+# from data_processing.convolution import *
 # from data_processing.filter_design import *
 # import numpy as np
 # import data_access.segy as segy

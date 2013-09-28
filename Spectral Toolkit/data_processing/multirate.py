@@ -9,9 +9,8 @@ import filter_design
 import convolution
 
 import numpy as np
-cimport numpy as np
 
-transition_band = 0.01
+transition_band = 0.1
 attenuation = 60
 
 def decimate(signal, factor, sampling_rate):
@@ -35,8 +34,8 @@ def decimate(signal, factor, sampling_rate):
     
     signal = convolution.fast_convolve_fftw_w(signal, filter)
     
-    decimated = np.empty(shape=(ceil(len(signal) / factor),), dtype=np.float64)
-    decimated[:] = signal[0:factor:]
+    decimated = np.empty(shape=(np.ceil(len(signal) / factor),), dtype=np.float64)
+    decimated[:] = signal[0::factor]
     
     return decimated
         
