@@ -17,16 +17,21 @@ from data_processing.convolution import *
 from data_processing.windowing import *
 from data_processing.multirate import *
 from data_processing.spectral_estimation import *
-
+from data_processing.sigproc import *
 mfftw.import_wisdom()
  
-# import benchmarks.convolution
+#import benchmarks.autocorrelation
 
-from data_access.segy import *
+# from data_access.segy import *
 
-# import benchmarks.convolution
+# import benchmarks.ar
 
-data = read_in_segy(['2011.08.04-00.00.00.FR.MGN.00.CGE.SEGY', '2011.08.05-00.00.00.FR.MGN.00.CGE.SEGY', '2011.08.06-00.00.00.FR.MGN.00.CGE.SEGY'])
+# data = read_in_segy(['2011.08.04-00.00.00.FR.MGN.00.CGE.SEGY', '2011.08.05-00.00.00.FR.MGN.00.CGE.SEGY', '2011.08.06-00.00.00.FR.MGN.00.CGE.SEGY'])
+# 
+# 
+# x = time.clock()
+# print auto_correlation(data, maximum_lag=20)
+# print time.clock() - x
 
 # plt.plot(data)
 # plt.show()
@@ -56,17 +61,17 @@ data = read_in_segy(['2011.08.04-00.00.00.FR.MGN.00.CGE.SEGY', '2011.08.05-00.00
 # plt.plot(data)
 # plt.show()
 
-print len(data)
-x = time.clock()
-data = decimate(data, 10, 500)
-data = decimate(data, 10, 500 / 10)
-data = decimate(data, 10, 500 / 100)
-data = decimate(data, 10, 0.5)
-print time.clock() - x
-print len(data)
-
-plt.plot(data)
-plt.show()
+# print len(data)
+# x = time.clock()
+# data = decimate(data, 10, 500)
+# data = decimate(data, 10, 500 / 10)
+# data = decimate(data, 10, 500 / 100)
+# data = decimate(data, 10, 0.5)
+# print time.clock() - x
+# print len(data)
+# 
+# plt.plot(data)
+# plt.show()
 
 # x = time.clock()
 # apply_blackman(data)
@@ -77,17 +82,17 @@ plt.show()
 # print time.clock() - x
 # plt.plot((0.025 / len(transform)) * np.arange(len(transform)), 10 * np.log10(transform))
 
-x = time.clock()
-transform = welch(data, 3*len(data)/4, interpolation_factor=15)
-print time.clock() - x
-plt.plot((0.025 / len(transform)) * np.arange(len(transform)), 10 * np.log10(transform))
-plt.show()
+# x = time.clock()
+# transform = welch(data, len(data)/4, interpolation_factor=5)
+# print time.clock() - x
+# plt.plot((0.025 / len(transform)) * np.arange(len(transform)), 10 * np.log10(transform))
+# plt.show()
 
-# qt_app = QApplication(sys.argv)
-#  
-# app = Library()
-# app.run()
-# qt_app.exec_()
+qt_app = QApplication(sys.argv)
+  
+app = Library()
+app.run()
+qt_app.exec_()
 
 # from data_processing.convolution import *
 # from data_processing.filter_design import *
