@@ -10,8 +10,15 @@ from PySide.QtGui import *
 from gui.library.librarymodel import LibraryModel
 from gui.library.libraryfilter import LibraryFilterWidget
 from gui.downloader.downloader import Downloader
+from gui.spectral_conf.spectral_conf import SpectralConf
+
+from config import *
+from gui.display.plot_td import *
 
 class Library(QWidget):
+    
+    plots = []
+    estimation_windows = []
     
     def __init__(self):
 
@@ -33,21 +40,21 @@ class Library(QWidget):
         self.left_vbox.addWidget(self.table)
         verthead = self.table.verticalHeader()
         verthead.setDefaultSectionSize(verthead.fontMetrics().height()+4)
-        
+         
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.resizeColumnsToContents()
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         
         self.action_bar_hbox = QHBoxLayout()
         self.left_vbox.addLayout(self.action_bar_hbox)
-        self.import_file_button = QPushButton('Import from file')
-        self.action_bar_hbox.addWidget(self.import_file_button)
+#         self.import_file_button = QPushButton('Import from file')
+#         self.action_bar_hbox.addWidget(self.import_file_button)
         self.download_more_button = QPushButton('Download more')
         self.download_more_button.clicked.connect(self.download_more_slot)
         self.action_bar_hbox.addWidget(self.download_more_button)
         self.action_bar_hbox.addStretch()
-        self.analyze_button = QPushButton('Perform spectral analysis')
-        self.action_bar_hbox.addWidget(self.analyze_button)
+#         self.analyze_button = QPushButton('Perform spectral analysis')
+#         self.action_bar_hbox.addWidget(self.analyze_button)
         
         self.filter_widget = LibraryFilterWidget(self.table_model)
         self.right_vbox.addWidget(self.filter_widget)
@@ -60,18 +67,53 @@ class Library(QWidget):
     @Slot(QPoint)
     def tableContextMenu(self, point):
         menu = QMenu()
-        menu.addAction('Display time domain')
+        self.display_td_action = QAction('Display time domain', self)
+        self.display_td_action.triggered.connect(self.display_td_slot)
+        
+        self.spec_est_action = QAction('Spectral estimation', self)
+        self.spec_est_action.triggered.connect(self.spectral_estimation_slot)
+        
+        menu.addAction(self.display_td_action)
         menu.addSeparator()
-        menu.addAction('Downsample')
+#         menu.addAction('Downsample')
         menu.addAction('Discontinuity tool')
-        menu.addAction('Spectral normalisation')
-        menu.addAction('Spectral analysis')
+#         menu.addAction('Spectral normalisation')
+        menu.addAction(self.spec_est_action)
         menu.addSeparator()
         menu.addAction('Export to MATLAB')
         menu.addAction('Export to Python/Numpy')
         menu.addSeparator()
         menu.addAction('Delete')
         menu.exec_(QCursor.pos())
+    
+    @Slot()
+    def display_td_slot(self):
+        print 'displaying td plot'
+        rows = list(set([qmi.row() for qmi in self.table.selectedIndexes()]))
+        files = [self.table_model.filtered_list[r][0] for r in rows]
+        
+        worker = ShowTDWorker(files)
+        self.plots.append(worker)
+        
+        
+        wthread = QThread()
+        self.plots.append(wthread)
+        worker.moveToThread(wthread)
+        wthread.started.connect(worker.show_td)
+        wthread.start()
+        
+        
+    @Slot()
+    def spectral_estimation_slot(self):
+        print 'spectral estimation'
+        rows = list(set([qmi.row() for qmi in self.table.selectedIndexes()]))
+        files = [self.table_model.filtered_list[r][0] for r in rows]
+        
+        estimation_window = SpectralConf(files)
+        estimation_window.show()
+        self.estimation_windows.append(estimation_window)
+        
+        
         
     @Slot()
     def download_more_slot(self):

@@ -51,6 +51,7 @@ config_db_default = {
 config_db = {}
 db = {}
 
+memory_library = {}
 
 def initialize_config():
     global config_db
@@ -83,6 +84,13 @@ def db_add_entry(filename, source, component, sampling_rate, start_time, end_tim
     
 def db_get_entry_count():
     return len(db)
+
+def db_load_data(filenames):
+    pass
+
+def db_discard_data(filenames):
+    pass
+    
 
 try:
     with open(DB_FILENAME) as f:

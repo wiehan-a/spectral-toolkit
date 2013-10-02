@@ -99,7 +99,10 @@ def levinson_durbin_recursion(np.ndarray[dtype=np.float64_t] R):
     return solution
 
 def auto_regression(signal, order=3):
-    R = auto_correlation_fft(signal, order)
+    corr_func = auto_correlation_fft
+    if order < 3:
+        corr_func = auto_correlation
+    R = corr_func(signal, order)
     return levinson_durbin_recursion(R)
     
     

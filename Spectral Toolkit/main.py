@@ -26,6 +26,8 @@ mfftw.import_wisdom()
 
 # import benchmarks.ar
 
+# import benchmarks.discontinuity
+
 # data = read_in_segy(['2011.08.04-00.00.00.FR.MGN.00.CGE.SEGY', '2011.08.05-00.00.00.FR.MGN.00.CGE.SEGY', '2011.08.06-00.00.00.FR.MGN.00.CGE.SEGY'])
 # 
 # 
@@ -89,7 +91,7 @@ mfftw.import_wisdom()
 # plt.show()
 
 qt_app = QApplication(sys.argv)
-  
+     
 app = Library()
 app.run()
 qt_app.exec_()

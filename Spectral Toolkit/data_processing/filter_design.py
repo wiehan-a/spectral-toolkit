@@ -53,11 +53,14 @@ def design_low_pass_fir(fc, delta_f, att, sampling_rate):
         else:
             beta = 0.5842 * (att - 21.0) ** (0.4) + 0.07886 * (att - 21)
     
-    M = (att - 8) / (2.285 * delta_w)
+    M = int((att - 8) / (2.285 * delta_w))
+    M += M % 2 #ensure M is odd
+    
     alpha = M / 2
     
-    n = np.arange(0, M, 1)
+    n = np.arange(0, M+1, 1)
     n_centered = n - alpha
+
     wn = beta * np.sqrt((1 - np.square(n_centered / alpha)))
     bessel_vectorized = np.vectorize(bessel_first_kind_order_zero)
     wn = bessel_vectorized(wn)
@@ -69,7 +72,7 @@ def design_low_pass_fir(fc, delta_f, att, sampling_rate):
     return filter
     
 if __name__ == '__main__':
-    filter = design_low_pass_fir(60, 1, 120, 125)
+    filter = design_low_pass_fir(10, 10, 60, 125)
     print filter
     print len(filter)
     plt.plot(filter, '*-')

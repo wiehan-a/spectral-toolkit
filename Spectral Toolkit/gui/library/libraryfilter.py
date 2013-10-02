@@ -52,6 +52,7 @@ class LibraryFilterWidget(QWidget):
         self.action_bar_hbox = QHBoxLayout()
         self.main_vbox.addLayout(self.action_bar_hbox)
         self.reset_view_button = QPushButton('Reset view')
+        self.reset_view_button.clicked.connect(self.model.reset_slot)
         self.action_bar_hbox.addWidget(self.reset_view_button)
         self.action_bar_hbox.addStretch()
         self.filter_button = QPushButton('Apply filter')
@@ -61,6 +62,7 @@ class LibraryFilterWidget(QWidget):
     @Slot()
     def apply_filter_slot(self):
         self.model.applyFilters([w.makeFilter() for w in self.filter_widgets])
+
     
 class FilterItemWidget(QHBoxLayout):
     

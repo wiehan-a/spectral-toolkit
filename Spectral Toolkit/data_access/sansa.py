@@ -13,7 +13,7 @@ import numpy as np
 
 SUPPORT_PARTIAL_PROGRESS_REPORTING = False
 SANSA_URL = 'http://geomagnet.ee.sun.ac.za/dbreadusec.php'
-SANSA_READ_BUFFER_SIZE = 1024*1024/4
+SANSA_READ_BUFFER_SIZE = 1024 * 1024 / 4
 
 SANSA_LOCAL_STORAGE_PATH = '/SANSA/'
 
@@ -32,7 +32,7 @@ def calculate_size(params):
     return (params['end_date'] - params['start_date']).total_seconds()
 
 def make_file_name(params, comp):
-    return config_db['data_folder'] + SANSA_LOCAL_STORAGE_PATH+'{:%Y.%m.%d.%H.%M.%S}'.format(params['start_date']) + '.' + '{:%Y.%m.%d.%H.%M.%S}'.format(params['end_date'])+'.'+comp
+    return config_db['data_folder'] + SANSA_LOCAL_STORAGE_PATH + '{:%Y.%m.%d.%H.%M.%S}'.format(params['start_date']) + '.' + '{:%Y.%m.%d.%H.%M.%S}'.format(params['end_date']) + '.' + comp
 
 class DownloaderWorker(QObject):
     
@@ -58,33 +58,27 @@ class DownloaderWorker(QObject):
         response = urllib2.urlopen(request)
         
         is_gzipped = response.headers.get('content-encoding', '').find('gzip') >= 0
-        d = zlib.decompressobj(16+zlib.MAX_WBITS)
+        d = zlib.decompressobj(16 + zlib.MAX_WBITS)
         buffer = response.read()
         if is_gzipped:
             compressed = len(buffer)
             self.real_size += compressed
             buffer = d.decompress(buffer)
-            print len(buffer)/compressed
+            print len(buffer) / compressed
             
             for x in buffer.split('<br>'):
                 line = x.split(';')
                 if len(line) > 1:
                     self.comp_1_file.write(struct.pack('f', float(line[3])))
                     self.comp_2_file.write(struct.pack('f', float(line[4])))
-                    self.comp_3_file.write(struct.pack('f', float(line[5])))
+                    self.comp_3_file.write(struct.pack('f', float(line[5])))            
             
-#             print buffer[0]
-#             print buffer[1]
-#             print buffer[-2]
-#             print buffer[-1]
-            
-            
-        self.size += 10*60
+        self.size += 10 * 60
         
         print utils.sizeof_fmt(self.real_size)
         
         self.progress_update.emit({'overall_downloaded': utils.sizeof_fmt(self.real_size),
-                                   'overall_bytes': self.size, 
+                                   'overall_bytes': self.size,
                                    'size_unknown' : True
                                    })
         
@@ -109,30 +103,12 @@ class DownloaderWorker(QObject):
             incr_end_time += datetime.timedelta(minutes=10)
         
         self.download(start_time, end_time)
-        
-        #print request.read()
-        
-        
-#         with ControlledFTP() as handle:
-#             sd = self.params['start_date']                
-#             handle.download_callbacks = [self.callback]
-#             while sd <= self.params['end_date']:                 
-#                 for c in self.params['components']: 
-#                     self.cur_size = 0
-#                     print 'Downloading', sd, c
-# 
-#                     handle.download(sd, c, self.params)
-# 
-#                     self.size += file_size
-#                     self.count += 1
-#                      
-#                 sd += datetime.timedelta(days=1)
 
-        db_add_entry(make_file_name(self.params, 'COMP1'), 'SANSA', 
+        db_add_entry(make_file_name(self.params, 'COMP1'), 'SANSA',
                      'COMP1', 125, self.params['start_date'], self.params['end_date'])
-        db_add_entry(make_file_name(self.params, 'COMP2'), 'SANSA', 
+        db_add_entry(make_file_name(self.params, 'COMP2'), 'SANSA',
                      'COMP2', 125, self.params['start_date'], self.params['end_date'])
-        db_add_entry(make_file_name(self.params, 'COMP3'), 'SANSA', 
+        db_add_entry(make_file_name(self.params, 'COMP3'), 'SANSA',
                      'COMP3', 125, self.params['start_date'], self.params['end_date'])
         save_db()
 
@@ -141,9 +117,22 @@ class DownloaderWorker(QObject):
         self.comp_3_file.close()
                 
         self.done.emit()
+        
+def read_in_filenames(filenames):
+    data = np.zeros(0)
+    for filename in filenames:
+        with open(filename, 'rb') as f:
+            buffer = f.read()
+            
+            print len(buffer)
+            print len(buffer) / 4
+            
+            data = np.hstack((data, np.ndarray(shape=(int(len(buffer) / 8)), dtype='float64', buffer=buffer)))
+    
+    return data
 
 if __name__ == '__main__':
     f = open('../DEBUG.COMP3', 'rb')
     buffer = f.read()
     
-    print np.ndarray(shape=(len(buffer)/4,), dtype='float32', buffer=buffer)
+    print np.ndarray(shape=(len(buffer) / 4,), dtype='float32', buffer=buffer)

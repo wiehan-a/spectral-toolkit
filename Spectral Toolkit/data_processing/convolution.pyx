@@ -9,9 +9,6 @@ cimport numpy as np
 
 import numpy.fft as fft
 
-import pyfftw
-import pyfftw.interfaces.numpy_fft as fftw
-
 cimport cython
 from fftw_wrapper.cfftw cimport * 
 

@@ -45,6 +45,12 @@ class LibraryModel(QAbstractTableModel):
             if keep:
                 self.filtered_list.append(entry)
         self.endResetModel()
+        
+    @Slot()
+    def reset_slot(self):
+        self.beginResetModel()
+        self.filtered_list = self.db_flat_view
+        self.endResetModel()
     
     def rowCount(self, parent=QModelIndex()):
         return len(self.filtered_list)
