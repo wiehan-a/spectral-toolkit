@@ -9,13 +9,11 @@ from __future__ import division
 from PySide.QtCore import *
 from PySide.QtGui import *
 import sys, time, os, utils, config
-
-# from gui import *
-# from gui.downloader import *
-# from gui.downloader.downloadconfirmwidget import *
-# from gui.downloader.dataselectorwidgets import *
 from gui.stdateedit import *
+from processing_worker import *
+import numpy as np
 
+import matplotlib.pyplot as plt
 
 class SpectralConf(QWidget):
     
@@ -31,6 +29,10 @@ class SpectralConf(QWidget):
         
         self.main_vbox = QVBoxLayout(self)
         self.main_vbox.setAlignment(Qt.AlignTop)
+        
+        self.progress_bar_vbox = QVBoxLayout()
+        self.main_vbox.addLayout(self.progress_bar_vbox)
+        
         self.header_title_label = QLabel()
         self.main_vbox.addWidget(self.header_title_label)        
         
@@ -57,12 +59,13 @@ class SpectralConf(QWidget):
     @Slot()
     def next_slot_domain(self):
         self.params = {
-                    'start_time': self.hosted_widget.start_date_dateedit.date(),
-                    'end_time': self.hosted_widget.end_date_dateedit.date(),
-                    'max_frequency' : float(self.hosted_widget.max_freq_edit.text()),
-                    'do_whitening' : self.hosted_widget.whitening_chkbx.isChecked(),
-                    'whitening_order' : int(self.hosted_widget.whitening_order_spinner.value()),
-                  }
+                        'files': self.files,
+                        'start_time': self.hosted_widget.start_date_dateedit.date(),
+                        'end_time': self.hosted_widget.end_date_dateedit.date(),
+                        'max_frequency' : float(self.hosted_widget.max_freq_edit.text()),
+                        'do_whitening' : self.hosted_widget.whitening_chkbx.isChecked(),
+                        'whitening_order' : int(self.hosted_widget.whitening_order_spinner.value()),
+                      }
         
         self.hosted_widget.setVisible(False)
         self.hosted_vbox.removeWidget(self.hosted_widget)
@@ -73,6 +76,33 @@ class SpectralConf(QWidget):
         self.header_title_label.setText(self.hosted_widget.title)
         self.next_button.clicked.disconnect(self.next_slot_domain)
         self.next_button.clicked.connect(self.next_slot_estim)
+        self.next_button.setEnabled(False)
+        
+        self.progress_bar = QProgressBar()
+        self.progress_bar.setTextVisible(False)
+        self.progress_bar.setMaximum(0)
+        self.progress_header_label = QLabel('<h4>Performing preprocessing</h4>')
+        self.progress_bar_vbox.addWidget(self.progress_header_label)
+        self.progress_label = QLabel('Loading data...')
+        self.progress_bar_vbox.addWidget(self.progress_label)
+        self.progress_bar_vbox.addWidget(self.progress_bar)
+        
+        self.preprocessing_worker = PreProcessingWorker(self.params)
+        self.preprocessing_worker.update_message.connect(self.progress_label.setText)
+        self.preprocessing_worker.done.connect(self.preprocessing_done_slot)
+        self.preprocess_thread = QThread()
+        self.preprocessing_worker.moveToThread(self.preprocess_thread)
+        self.preprocess_thread.started.connect(self.preprocessing_worker.do_processing)
+        self.preprocess_thread.start()
+        
+    @Slot(np.ndarray)
+    def preprocessing_done_slot(self, signal):
+        self.next_button.setEnabled(True)
+        self.progress_bar.setVisible(False)
+        self.progress_header_label.setVisible(False)
+        self.progress_label.setVisible(False)
+        
+        print signal
         
     @Slot()
     def next_slot_estim(self):
@@ -209,7 +239,7 @@ class EstimationConfigWidget(QWidget):
         self.right_vbox = QVBoxLayout()
         self.main_hbox.addLayout(self.right_vbox)
         self.main_hbox.setStretchFactor(self.left_vbox, 2)
-        self.info_table = QTableWidget(6, 2)
+        self.info_table = QTableWidget(5, 2)
         self.right_vbox.addWidget(self.info_table)
         
         verthead = self.info_table.verticalHeader()
@@ -217,9 +247,16 @@ class EstimationConfigWidget(QWidget):
         verthead.hide()
          
         self.info_table.horizontalHeader().setStretchLastSection(True)
-        self.info_table.resizeColumnsToContents()
+        
         self.info_table.horizontalHeader().hide()
-
+        
+        items = ['Sampling rate', 'Cut-off frequency', 'Number of samples', 
+                 'Max frequency resolution', 'Estimator variance']
+        for idx, val in enumerate(items):
+            self.info_table.setItem(idx, 0, QTableWidgetItem(val))
+            
+        self.info_table.resizeColumnsToContents()
+        
         
     @Slot(int)
     def method_changed_slot(self, idx):
