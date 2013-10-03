@@ -5,7 +5,7 @@ Created on Oct 1, 2013
 '''
 import multirate
 
-TARGET_LENGTH = 5000
+TARGET_LENGTH = 3000
 
 def downsample_for_display(signal, target_length=TARGET_LENGTH):
     '''

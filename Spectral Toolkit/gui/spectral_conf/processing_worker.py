@@ -15,6 +15,7 @@ import numpy as np
 import data_processing.multirate as multirate
 import data_processing.sigproc as sigproc
 import data_processing.convolution as convolution
+import data_processing.spectral_estimation as spec_est
 
 data_engines = {
                    'SANSA' :  data_access.sansa,
@@ -23,21 +24,37 @@ data_engines = {
 
 class ProcessingWorker(QObject):
     
-    done = Signal()
+    done = Signal(np.ndarray)
     update_message = Signal(str)
     
-    def __init__(self, params):
+    def __init__(self, signal, params):
         QObject.__init__(self)
+        self.signal = signal
         self.params = params
         
     @Slot()
     def do_processing(self):
-        pass
+        N = len(self.signal)
         
+        interpol_factor = 1
+        if self.params['do_interpol']:
+            interpol_factor = self.params['interpol_factor']
+        
+        estimate = None
+        if self.params['method'] == 'Periodogram':
+            estimate = spec_est.periodogram(self.signal, interpolation_factor=interpol_factor)
+        elif self.params['method'] == 'Bartlett':
+            estimate = spec_est.bartlett(self.signal, self.params['parameter'], interpolation_factor=interpol_factor)
+        elif self.params['method'] == 'Welch':
+            estimate = spec_est.welch(self.signal, self.params['parameter'], interpolation_factor=interpol_factor)
+        else:
+            pass
+        
+        self.done.emit(estimate)
         
 class PreProcessingWorker(QObject):
     
-    done = Signal(np.ndarray)
+    done = Signal(np.ndarray, float)
     update_message = Signal(str)
     
     def __init__(self, params):
@@ -57,18 +74,30 @@ class PreProcessingWorker(QObject):
         mf = self.params['max_frequency']
         decimation_factor = int((sr / 2.0) / mf)
         
+        sr_cpy = sr
+        
         self.update_message.emit('Downsampling...')
-        signal = multirate.decimate(signal, decimation_factor)
         
-        if self.params['do_whitening']:
-            self.update_message.emit('Calculating normalisation model...')
-            model = sigproc.auto_regression(signal, self.params['whitening_order'])
-            self.update_message.emit('Applying normalisation filter...')
-            if self.params['whitening_order'] < 10:
-                signal = convolution.slow_convolve(signal, model)
+        while decimation_factor >= 2:
+            if decimation_factor > 10:
+                signal = multirate.decimate(signal, 10)
+                decimation_factor /= 10
+                sr_cpy /= 10
             else:
-                signal = convolution.fast_convolve_fftw_w(signal, model)
+                signal = multirate.decimate(signal, int(decimation_factor))
+                sr_cpy /= int(decimation_factor)
+                decimation_factor /= int(decimation_factor)
+
+#         if self.params['do_whitening']:
+#             self.update_message.emit('Calculating normalisation model...')
+#             model = sigproc.auto_regression(signal, self.params['whitening_order'])
+#             self.update_message.emit('Applying normalisation filter...')
+#             if self.params['whitening_order'] < 10:
+#                 signal = convolution.slow_convolve(signal, model)
+#             else:
+#                 signal = convolution.fast_convolve_fftw_w(signal, model)
         
-        self.done.emit(signal)
+        self.update_message.emit('Done')
+        self.done.emit(signal, sr_cpy)
         
         

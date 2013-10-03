@@ -4,13 +4,16 @@ Created on Sep 16, 2013
 @author: Wiehan
 '''
 
+import matplotlib
+matplotlib.use('Qt4Agg')
+matplotlib.rcParams['backend.qt4']='PySide'
+
 from PySide.QtGui import *
 from PySide.QtCore import *
 import sys, os, time
 from gui.downloader.downloader import Downloader
 from gui.library.libraryview import Library
 import fftw_wrapper.fftw_py as mfftw
-import matplotlib.pyplot as plt
 import numpy as np
 from data_processing.filter_design import *
 from data_processing.convolution import *
@@ -19,6 +22,7 @@ from data_processing.multirate import *
 from data_processing.spectral_estimation import *
 from data_processing.sigproc import *
 mfftw.import_wisdom()
+
  
 #import benchmarks.autocorrelation
 

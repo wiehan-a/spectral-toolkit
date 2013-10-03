@@ -13,6 +13,9 @@ import numpy as np
 transition_band = 0.1
 attenuation = 60
 
+class NotEnoughSamplesException(Exception):
+    pass
+
 def decimate(signal, factor):
     '''
     Decimate the signal by the integer factor provided.
@@ -31,8 +34,9 @@ def decimate(signal, factor):
     
     delay = (len(filter)-1)/2
     
-    if len(filter) >= len(signal):
-        print 'Filter length exceeds signal length'
+    while len(filter) >= len(signal):
+        raise NotEnoughSamplesException('Filter length exceeds signal length, try relaxing constraints')
+                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                
     
     #signal = np.convolve(signal, filter)
     signal = convolution.fast_convolve_fftw_w(signal, filter)

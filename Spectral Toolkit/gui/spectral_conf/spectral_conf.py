@@ -13,7 +13,11 @@ from gui.stdateedit import *
 from processing_worker import *
 import numpy as np
 
-import matplotlib.pyplot as plt
+from data_processing.display_friendly import downsample_for_display
+
+from gui.display.plot_view import Plotter
+
+from utils import frequency_fmt
 
 class SpectralConf(QWidget):
     
@@ -60,12 +64,9 @@ class SpectralConf(QWidget):
     def next_slot_domain(self):
         self.params = {
                         'files': self.files,
-                        'start_time': self.hosted_widget.start_date_dateedit.date(),
-                        'end_time': self.hosted_widget.end_date_dateedit.date(),
-                        'max_frequency' : float(self.hosted_widget.max_freq_edit.text()),
-                        'do_whitening' : self.hosted_widget.whitening_chkbx.isChecked(),
-                        'whitening_order' : int(self.hosted_widget.whitening_order_spinner.value()),
                       }
+        
+        self.params.update(self.hosted_widget.get_params())
         
         self.hosted_widget.setVisible(False)
         self.hosted_vbox.removeWidget(self.hosted_widget)
@@ -95,25 +96,53 @@ class SpectralConf(QWidget):
         self.preprocess_thread.started.connect(self.preprocessing_worker.do_processing)
         self.preprocess_thread.start()
         
-    @Slot(np.ndarray)
-    def preprocessing_done_slot(self, signal):
+    @Slot(np.ndarray, float)
+    def preprocessing_done_slot(self, signal, new_sampling_rate):
         self.next_button.setEnabled(True)
-        self.progress_bar.setVisible(False)
-        self.progress_header_label.setVisible(False)
-        self.progress_label.setVisible(False)
+        self.progress_bar.setMaximum(1)
+        self.progress_bar.setValue(1)
         
-        print signal
+        self.signal = signal
+        self.new_sampling_rate = new_sampling_rate
+        self.hosted_widget.update_info_table()
+        
+    @Slot(np.ndarray)
+    def processing_done_slot(self, signal):
+        self.next_button.setEnabled(True)
+        self.progress_bar.setMaximum(1)
+        self.progress_bar.setValue(1)
+        
+        self.signal = None
+        signal = 10*np.log10(signal)
+        signal = downsample_for_display(signal)
+        self.new_plot = Plotter(None, signal)
+        
         
     @Slot()
     def next_slot_estim(self):
         self.params.update({
                                 'method' : self.hosted_widget.estimation_methods[self.hosted_widget.method_combo.currentIndex()],
                                 'do_interpol' : self.hosted_widget.interpolate_chkbx.isChecked(),
-                                'interpol_factor' : float(self.hosted_widget.parameter_edit.text()),
+                                'interpol_factor' : float(self.hosted_widget.interpolate_edit.text()),
                                 'parameter' : int(self.hosted_widget.parameter_edit.text())
                             })
         
-        print self.params
+        self.processing_worker = ProcessingWorker(self.signal, self.params)
+        self.processing_worker.update_message.connect(self.progress_label.setText)
+        self.processing_worker.done.connect(self.processing_done_slot)
+        self.process_thread = QThread()
+        self.processing_worker.moveToThread(self.process_thread)
+        self.process_thread.started.connect(self.processing_worker.do_processing)
+        self.process_thread.start()
+        
+        self.progress_header_label.setText('<h4>Performing spectral analysis</h4>')
+        self.progress_bar.setMinimum(0)
+        self.progress_bar.setValue(0)
+        self.progress_bar.setMaximum(0)
+        self.progress_label.setVisible(False)
+        self.hosted_widget.setVisible(False)
+        
+        self.signal = None
         
 
 class DomainConfigWidget(QWidget):
@@ -135,12 +164,16 @@ class DomainConfigWidget(QWidget):
         start_date_label = QLabel('Start time:')
         self.date_hbox.addWidget(start_date_label)
         self.start_date_dateedit = STDateTimeEdit()
+        self.start_date_dateedit.setMinimumDateTime(QDateTime(config.db[self.parent_.files[0]]['start_time']))
+        self.start_date_dateedit.setMaximumDateTime(QDateTime(config.db[self.parent_.files[0]]['end_time']))
         self.start_date_dateedit.setDateTime(QDateTime(config.db[self.parent_.files[0]]['start_time']))
         self.date_hbox.addWidget(self.start_date_dateedit)
         self.date_hbox.addSpacing(10)
         end_date_label = QLabel('End time:')
         self.date_hbox.addWidget(end_date_label)
         self.end_date_dateedit = STDateTimeEdit()
+        self.end_date_dateedit.setMinimumDateTime(QDateTime(config.db[self.parent_.files[-1]]['start_time']))
+        self.end_date_dateedit.setMaximumDateTime(QDateTime(config.db[self.parent_.files[-1]]['end_time']))
         self.end_date_dateedit.setDateTime(QDateTime(config.db[self.parent_.files[-1]]['end_time']))
         self.date_hbox.addWidget(self.end_date_dateedit)
         
@@ -174,6 +207,15 @@ class DomainConfigWidget(QWidget):
         self.whitening_order_spinner.setEnabled(False)
         self.whitening_hbox.addWidget(self.whitening_order_spinner)
         
+    def get_params(self):
+        return  {   
+                 'start_time': self.start_date_dateedit.date(),
+                 'end_time': self.end_date_dateedit.date(),
+                 'max_frequency' : float(self.max_freq_edit.text()),
+                 'do_whitening' : self.whitening_chkbx.isChecked(),
+                 'whitening_order' : int(self.whitening_order_spinner.value())
+                }
+        
     @Slot()
     def whitening_slot(self):
         self.whitening_order_spinner.setEnabled(self.whitening_chkbx.isChecked())
@@ -204,6 +246,7 @@ class EstimationConfigWidget(QWidget):
         self.method_hbox.addWidget(self.method_label)
         self.method_combo = QComboBox()
         self.method_combo.currentIndexChanged.connect(self.method_changed_slot)
+        self.method_combo.currentIndexChanged.connect(self.update_info_table)
         self.method_combo.addItems(self.estimation_methods)
         self.method_hbox.addWidget(self.method_combo)
         
@@ -229,6 +272,7 @@ class EstimationConfigWidget(QWidget):
         self.parameter_label = QLabel('Number of segments:')
         self.parameter_hbox.addWidget(self.parameter_label)
         self.parameter_edit = QLineEdit('2')
+        self.parameter_edit.textChanged.connect(self.update_info_table)
         self.parameter_edit.setEnabled(False)
         self.parameter_hbox.addStretch()
         self.parameter_hbox.addWidget(self.parameter_edit)
@@ -239,7 +283,7 @@ class EstimationConfigWidget(QWidget):
         self.right_vbox = QVBoxLayout()
         self.main_hbox.addLayout(self.right_vbox)
         self.main_hbox.setStretchFactor(self.left_vbox, 2)
-        self.info_table = QTableWidget(5, 2)
+        self.info_table = QTableWidget(4, 2)
         self.right_vbox.addWidget(self.info_table)
         
         verthead = self.info_table.verticalHeader()
@@ -250,12 +294,33 @@ class EstimationConfigWidget(QWidget):
         
         self.info_table.horizontalHeader().hide()
         
-        items = ['Sampling rate', 'Cut-off frequency', 'Number of samples', 
-                 'Max frequency resolution', 'Estimator variance']
+        items = ['Sampling rate', 'Number of samples', 
+                 'Main lobe width', 'Side lobe attenuation']
         for idx, val in enumerate(items):
             self.info_table.setItem(idx, 0, QTableWidgetItem(val))
+        
+        self.update_info_table()
+        
+        
+    @Slot()
+    def update_info_table(self):
+        if hasattr(self.parent_, 'new_sampling_rate'):
+            self.info_table.setItem(0,1, QTableWidgetItem(frequency_fmt(self.parent_.new_sampling_rate)))
+            sample_count = len(self.parent_.signal)
+            self.info_table.setItem(1,1, QTableWidgetItem(str(sample_count)))
+            max_frequency_resolution = self.parent_.new_sampling_rate * 6.0/ sample_count
+            if self.method_combo.currentIndex() == 1:
+                max_frequency_resolution *= int(self.parameter_edit.text())
+            if self.method_combo.currentIndex() == 2:
+                max_frequency_resolution = self.parent_.new_sampling_rate * 6.0/int(self.parameter_edit.text())
+            if self.method_combo.currentIndex() == 3:
+                self.info_table.setItem(2,1, QTableWidgetItem('n.a.'))
+            else:
+                self.info_table.setItem(2,1, QTableWidgetItem(frequency_fmt(max_frequency_resolution)))
             
-        self.info_table.resizeColumnsToContents()
+        if hasattr(self, 'info_table'):
+            self.info_table.setItem(3,1, QTableWidgetItem('58.1dB'))
+            self.info_table.resizeColumnsToContents()
         
         
     @Slot(int)

@@ -93,14 +93,15 @@ class Library(QWidget):
         files = [self.table_model.filtered_list[r][0] for r in rows]
         
         worker = ShowTDWorker(files)
+        worker.show_td()
         self.plots.append(worker)
-        
-        
-        wthread = QThread()
-        self.plots.append(wthread)
-        worker.moveToThread(wthread)
-        wthread.started.connect(worker.show_td)
-        wthread.start()
+#         
+#         
+#         wthread = QThread()
+#         self.plots.append(wthread)
+#         worker.moveToThread(wthread)
+#         wthread.started.connect(worker.show_td)
+#         wthread.start()
         
         
     @Slot()

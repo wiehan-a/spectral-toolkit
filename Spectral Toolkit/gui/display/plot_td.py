@@ -10,6 +10,7 @@ from data_processing import display_friendly
 from datetime import timedelta
 
 from PySide.QtCore import QObject, Slot
+from plot_view import Plotter
 
 import matplotlib.pyplot as plt
 
@@ -59,9 +60,4 @@ class ShowTDWorker(QObject):
         td = (db[files[-1]]['end_time'] - db[files[0]]['start_time']) / len(signal)
         
         x_axis = [db[files[0]]['start_time'] + idx * td for idx in xrange(len(signal))]
-#         plt.fig
-        plt.title(db[files[0]]['source'])
-        plt.plot(x_axis, signal)
-        plt.gcf().autofmt_xdate()
-        plt.show()
-    
+        self.plotter = Plotter(x_axis, signal)
