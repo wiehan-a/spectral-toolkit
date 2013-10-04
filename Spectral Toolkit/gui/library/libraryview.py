@@ -85,6 +85,25 @@ class Library(QWidget):
         menu.addSeparator()
         menu.addAction('Delete')
         menu.exec_(QCursor.pos())
+        
+    def validate_selection(self, files):
+        if len(files) > 1:
+            sources = set([db[f]['source'] for f in files])
+            
+            if len(sources) > 1:
+                raise MultipleSourcesException()
+            
+            components = set([db[f]['component'] for f in files])
+            
+            if len(components) > 1:
+                raise MultipleComponentsException()
+            
+            files = sorted(files, key=lambda f: db[f]['start_time'])
+            
+            for idx in xrange(len(files) - 1):
+                if db[files[idx + 1]]['start_time'] - db[files[idx]]['end_time'] > timedelta(seconds=1):
+                    raise NotContiguousException()
+        
     
     @Slot()
     def display_td_slot(self):
@@ -92,16 +111,26 @@ class Library(QWidget):
         rows = list(set([qmi.row() for qmi in self.table.selectedIndexes()]))
         files = [self.table_model.filtered_list[r][0] for r in rows]
         
-        worker = ShowTDWorker(files)
-        worker.show_td()
-        self.plots.append(worker)
-#         
-#         
-#         wthread = QThread()
-#         self.plots.append(wthread)
-#         worker.moveToThread(wthread)
-#         wthread.started.connect(worker.show_td)
-#         wthread.start()
+        try:
+            self.validate_selection(files)
+            worker = ShowTDWorker(files)
+            worker.show_td()
+            self.plots.append(worker)
+        except NotContiguousException:
+            msgBox = QMessageBox()
+            msgBox.setText("Only a selection of temporally contiguous files supported.")
+            msgBox.setIcon(QMessageBox.Critical)
+            msgBox.exec_()
+        except MultipleComponentsException:
+            msgBox = QMessageBox();
+            msgBox.setText("Only a single component can be plotted at one time.")
+            msgBox.setIcon(QMessageBox.Critical)
+            msgBox.exec_()
+        except MultipleSourcesException:
+            msgBox = QMessageBox()
+            msgBox.setText("Please do not select data from multiple sources.")
+            msgBox.setIcon(QMessageBox.Critical)
+            msgBox.exec_()
         
         
     @Slot()
@@ -110,10 +139,26 @@ class Library(QWidget):
         rows = list(set([qmi.row() for qmi in self.table.selectedIndexes()]))
         files = [self.table_model.filtered_list[r][0] for r in rows]
         
-        estimation_window = SpectralConf(files)
-        estimation_window.show()
-        self.estimation_windows.append(estimation_window)
-        
+        try:
+            self.validate_selection(files)
+            estimation_window = SpectralConf(files)
+            estimation_window.show()
+            self.estimation_windows.append(estimation_window)
+        except NotContiguousException:
+            msgBox = QMessageBox()
+            msgBox.setText("Only a selection of temporally contiguous files supported.")
+            msgBox.setIcon(QMessageBox.Critical)
+            msgBox.exec_()
+        except MultipleComponentsException:
+            msgBox = QMessageBox();
+            msgBox.setText("Only a single component can be plotted at one time.")
+            msgBox.setIcon(QMessageBox.Critical)
+            msgBox.exec_()
+        except MultipleSourcesException:
+            msgBox = QMessageBox()
+            msgBox.setText("Please do not select data from multiple sources.")
+            msgBox.setIcon(QMessageBox.Critical)
+            msgBox.exec_()
         
         
     @Slot()
@@ -125,6 +170,15 @@ class Library(QWidget):
         
     def run(self):
         self.show()
+        
+class MultipleSourcesException(Exception):
+    pass
+
+class MultipleComponentsException(Exception):
+    pass
+
+class NotContiguousException(Exception):
+    pass
         
 
 if __name__ == '__main__':

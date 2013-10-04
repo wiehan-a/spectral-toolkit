@@ -32,10 +32,10 @@ def slow_convolve(np.ndarray[np.float64_t, ndim=1] x not None,
     
     '''
     
-    cdef Py_ssize_t n = 0, k = 0
+    cdef int n = 0, k = 0
     cdef np.float64_t tmp
-    cdef Py_ssize_t x_len = len(x)
-    cdef Py_ssize_t h_len = len(h)
+    cdef int x_len = len(x)
+    cdef int h_len = len(h)
     
     if out_buffer is None:
         out_buffer = np.empty(shape=(x_len,), dtype=x.dtype)
@@ -45,7 +45,7 @@ def slow_convolve(np.ndarray[np.float64_t, ndim=1] x not None,
             for k in xrange(0, n + 1):
                 out_buffer[n] += x[n - k] * h[k]
             
-        for n in prange(h_len, x_len + 1, num_threads=8):
+        for n in prange(h_len, x_len, num_threads=8):
             for k in xrange(0, h_len):
                 out_buffer[n] += x[n - k] * h[k]
         

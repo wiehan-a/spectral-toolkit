@@ -19,15 +19,6 @@ data_engines = {
                    'LSBB' : data_access.lsbb
                }
 
-class MultipleSourcesException(Exception):
-    pass
-
-class MultipleComponentsException(Exception):
-    pass
-
-class NotContiguousException(Exception):
-    pass
-
 class ShowTDWorker(QObject):
     
     def __init__(self, files):
@@ -37,22 +28,7 @@ class ShowTDWorker(QObject):
     @Slot()
     def show_td(self):
         files = self.files
-        if len(files) > 1:
-            sources = set([db[f]['source'] for f in files])
-            
-            if len(sources) > 1:
-                raise MultipleSourcesException()
-            
-            components = set([db[f]['component'] for f in files])
-            
-            if len(components) > 1:
-                raise MultipleComponentsException()
-            
-            files = sorted(files, key=lambda f: db[f]['start_time'])
-            
-            for idx in xrange(len(files) - 1):
-                if db[files[idx + 1]]['start_time'] - db[files[idx]]['end_time'] > timedelta(seconds=1):
-                    raise NotContiguousException()
+        files = sorted(files, key=lambda f: db[f]['start_time'])
         
         signal = data_engines[db[files[0]]['source']].read_in_filenames(files)
         signal = display_friendly.downsample_for_display(signal)

@@ -88,14 +88,16 @@ class PreProcessingWorker(QObject):
                 sr_cpy /= int(decimation_factor)
                 decimation_factor /= int(decimation_factor)
 
-#         if self.params['do_whitening']:
-#             self.update_message.emit('Calculating normalisation model...')
-#             model = sigproc.auto_regression(signal, self.params['whitening_order'])
-#             self.update_message.emit('Applying normalisation filter...')
-#             if self.params['whitening_order'] < 10:
-#                 signal = convolution.slow_convolve(signal, model)
-#             else:
-#                 signal = convolution.fast_convolve_fftw_w(signal, model)
+        if self.params['do_whitening']:
+            self.update_message.emit('Calculating normalisation model...')
+            model = sigproc.auto_regression(signal, self.params['whitening_order'])
+            self.update_message.emit('Applying normalisation filter...')
+            if self.params['whitening_order'] < 10:
+                print len(signal)
+                print len(model)
+                signal = convolution.slow_convolve(signal, model)
+            else:
+                signal = convolution.fast_convolve_fftw_w(signal, model)
         
         self.update_message.emit('Done')
         self.done.emit(signal, sr_cpy)

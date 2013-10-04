@@ -113,9 +113,9 @@ class SpectralConf(QWidget):
         self.progress_bar.setValue(1)
         
         self.signal = None
-        signal = 10*np.log10(signal)
+        signal = 10 * np.log10(signal)
         signal = downsample_for_display(signal)
-        self.new_plot = Plotter(None, signal)
+        self.new_plot = Plotter((self.new_sampling_rate / 2) * np.arange(len(signal)) / len(signal), signal)
         
         
     @Slot()
@@ -141,6 +141,9 @@ class SpectralConf(QWidget):
         self.progress_bar.setMaximum(0)
         self.progress_label.setVisible(False)
         self.hosted_widget.setVisible(False)
+        self.header_title_label.setVisible(False)
+        self.cancel_button.setVisible(False)
+        self.next_button.setVisible(False)
         
         self.signal = None
         
@@ -182,7 +185,7 @@ class DomainConfigWidget(QWidget):
         self.main_vbox.addLayout(self.frequency_hbox)
         self.max_freq_label = QLabel('Maximum frequency of interest:')
         self.frequency_hbox.addWidget(self.max_freq_label)
-        self.max_freq_edit = QLineEdit(''+str(config.db[self.parent_.files[0]]['sampling_rate']/2))
+        self.max_freq_edit = QLineEdit('' + str(config.db[self.parent_.files[0]]['sampling_rate'] / 2))
         self.frequency_hbox.addWidget(self.max_freq_edit)
         self.frequency_hbox.addStretch()
         
@@ -287,14 +290,14 @@ class EstimationConfigWidget(QWidget):
         self.right_vbox.addWidget(self.info_table)
         
         verthead = self.info_table.verticalHeader()
-        verthead.setDefaultSectionSize(verthead.fontMetrics().height()+4)
+        verthead.setDefaultSectionSize(verthead.fontMetrics().height() + 4)
         verthead.hide()
          
         self.info_table.horizontalHeader().setStretchLastSection(True)
         
         self.info_table.horizontalHeader().hide()
         
-        items = ['Sampling rate', 'Number of samples', 
+        items = ['Sampling rate', 'Number of samples',
                  'Main lobe width', 'Side lobe attenuation']
         for idx, val in enumerate(items):
             self.info_table.setItem(idx, 0, QTableWidgetItem(val))
@@ -305,21 +308,21 @@ class EstimationConfigWidget(QWidget):
     @Slot()
     def update_info_table(self):
         if hasattr(self.parent_, 'new_sampling_rate'):
-            self.info_table.setItem(0,1, QTableWidgetItem(frequency_fmt(self.parent_.new_sampling_rate)))
+            self.info_table.setItem(0, 1, QTableWidgetItem(frequency_fmt(self.parent_.new_sampling_rate)))
             sample_count = len(self.parent_.signal)
-            self.info_table.setItem(1,1, QTableWidgetItem(str(sample_count)))
-            max_frequency_resolution = self.parent_.new_sampling_rate * 6.0/ sample_count
+            self.info_table.setItem(1, 1, QTableWidgetItem(str(sample_count)))
+            max_frequency_resolution = self.parent_.new_sampling_rate * 6.0 / sample_count
             if self.method_combo.currentIndex() == 1:
                 max_frequency_resolution *= int(self.parameter_edit.text())
             if self.method_combo.currentIndex() == 2:
-                max_frequency_resolution = self.parent_.new_sampling_rate * 6.0/int(self.parameter_edit.text())
+                max_frequency_resolution = self.parent_.new_sampling_rate * 6.0 / int(self.parameter_edit.text())
             if self.method_combo.currentIndex() == 3:
-                self.info_table.setItem(2,1, QTableWidgetItem('n.a.'))
+                self.info_table.setItem(2, 1, QTableWidgetItem('n.a.'))
             else:
-                self.info_table.setItem(2,1, QTableWidgetItem(frequency_fmt(max_frequency_resolution)))
+                self.info_table.setItem(2, 1, QTableWidgetItem(frequency_fmt(max_frequency_resolution)))
             
         if hasattr(self, 'info_table'):
-            self.info_table.setItem(3,1, QTableWidgetItem('58.1dB'))
+            self.info_table.setItem(3, 1, QTableWidgetItem('58.1dB'))
             self.info_table.resizeColumnsToContents()
         
         

@@ -39,7 +39,17 @@ class LibraryFilterWidget(QWidget):
         
         self.filter_widgets = []
         
-        prototype = db[db.keys()[0]]
+        try:
+            prototype = db[db.keys()[0]]
+        except IndexError:
+            prototype = {
+                            "component": "HGZ",
+                            "end_time": datetime.datetime.now(),
+                            "sampling_rate": 125,
+                            "source": "LSBB",
+                            "start_time": datetime.datetime.now()
+                        }
+        
         for key, value in prototype.iteritems():
             self.filter_widgets.append(FilterItemWidget(key, value))
 
