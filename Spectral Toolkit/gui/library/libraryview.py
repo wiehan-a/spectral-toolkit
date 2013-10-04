@@ -12,6 +12,9 @@ from gui.library.libraryfilter import LibraryFilterWidget
 from gui.downloader.downloader import Downloader
 from gui.spectral_conf.spectral_conf import SpectralConf
 
+import gc
+
+
 from config import *
 from gui.display.plot_td import *
 
@@ -141,8 +144,9 @@ class Library(QWidget):
         
         try:
             self.validate_selection(files)
-            estimation_window = SpectralConf(files)
+            estimation_window = SpectralConf(files, self)
             estimation_window.show()
+            estimation_window.closed.connect(self.spec_est_close_slot)
             self.estimation_windows.append(estimation_window)
         except NotContiguousException:
             msgBox = QMessageBox()
@@ -160,6 +164,23 @@ class Library(QWidget):
             msgBox.setIcon(QMessageBox.Critical)
             msgBox.exec_()
         
+    @Slot(QObject)
+    def spec_est_close_slot(self, window):
+#         print 'I happen too'
+#         print sys.getrefcount(window)
+        self.estimation_windows.remove(window)
+#         print sys.getrefcount(window)
+#         from guppy import hpy
+#         h = hpy()
+#         print h.heap()
+#         import objgraph
+#         objgraph.show_backrefs([window], filename='sample-graph.png')
+#         print self.estimation_windows
+        
+    @Slot(QObject)
+    def plot_closed_slot(self, plot):
+#         print 'I happen'
+        self.plots.remove(plot)
         
     @Slot()
     def download_more_slot(self):

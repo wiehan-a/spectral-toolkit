@@ -9,7 +9,7 @@ import data_access.sansa, data_access.lsbb
 from data_processing import display_friendly
 from datetime import timedelta
 
-from PySide.QtCore import QObject, Slot
+from PySide.QtCore import QObject, Slot, Signal
 from plot_view import Plotter
 
 import matplotlib.pyplot as plt
@@ -20,6 +20,8 @@ data_engines = {
                }
 
 class ShowTDWorker(QObject):
+    
+    closed = Signal()
     
     def __init__(self, files):
         QObject.__init__(self)
@@ -37,3 +39,9 @@ class ShowTDWorker(QObject):
         
         x_axis = [db[files[0]]['start_time'] + idx * td for idx in xrange(len(signal))]
         self.plotter = Plotter(x_axis, signal)
+        self.plotter.closed.connect(self.plotter_close)
+        
+    @Slot()
+    def plotter_close(self):
+        self.plotter = None
+        self.closed.emit()

@@ -6,6 +6,8 @@ Created on Sep 11, 2013
 
 from __future__ import division
 
+import weakref
+
 from PySide.QtCore import *
 from PySide.QtGui import *
 import sys, time, os, utils, config
@@ -21,10 +23,13 @@ from utils import frequency_fmt
 
 class SpectralConf(QWidget):
     
-    def __init__(self, files):
+    closed = Signal(QObject)
+    
+    def __init__(self, files, parent_):
 
         QWidget.__init__(self)
         
+        self.parent_ = weakref.ref(parent_)
         self.files = files
         self.files = sorted(self.files, key=lambda f: config.db[f]['start_time'])
         
@@ -115,8 +120,9 @@ class SpectralConf(QWidget):
         self.signal = None
         signal = 10 * np.log10(signal)
         signal = downsample_for_display(signal)
-        self.new_plot = Plotter((self.new_sampling_rate / 2) * np.arange(len(signal)) / len(signal), signal)
-        
+        new_plot = Plotter((self.new_sampling_rate / 2) * np.arange(len(signal)) / len(signal), signal)
+        new_plot.closed.connect(self.parent_().plot_closed_slot)
+        self.parent_().plots.append(new_plot)
         
     @Slot()
     def next_slot_estim(self):
@@ -147,6 +153,14 @@ class SpectralConf(QWidget):
         
         self.signal = None
         
+    def closeEvent(self, *args, **kwargs):
+        try:
+            self.process_thread.terminate()
+            self.preprocess_thread.terminate()
+        except AttributeError:
+            pass
+        self.closed.emit(self)
+        
 
 class DomainConfigWidget(QWidget):
     
@@ -156,7 +170,7 @@ class DomainConfigWidget(QWidget):
     def __init__(self, parent_):
         QWidget.__init__(self)
         
-        self.parent_ = parent_
+        self.parent_ = weakref.ref(parent_)
         
         self.main_vbox = QVBoxLayout(self)
         self.main_vbox.setAlignment(Qt.AlignTop)
@@ -167,17 +181,17 @@ class DomainConfigWidget(QWidget):
         start_date_label = QLabel('Start time:')
         self.date_hbox.addWidget(start_date_label)
         self.start_date_dateedit = STDateTimeEdit()
-        self.start_date_dateedit.setMinimumDateTime(QDateTime(config.db[self.parent_.files[0]]['start_time']))
-        self.start_date_dateedit.setMaximumDateTime(QDateTime(config.db[self.parent_.files[0]]['end_time']))
-        self.start_date_dateedit.setDateTime(QDateTime(config.db[self.parent_.files[0]]['start_time']))
+        self.start_date_dateedit.setMinimumDateTime(QDateTime(config.db[self.parent_().files[0]]['start_time']))
+        self.start_date_dateedit.setMaximumDateTime(QDateTime(config.db[self.parent_().files[0]]['end_time']))
+        self.start_date_dateedit.setDateTime(QDateTime(config.db[self.parent_().files[0]]['start_time']))
         self.date_hbox.addWidget(self.start_date_dateedit)
         self.date_hbox.addSpacing(10)
         end_date_label = QLabel('End time:')
         self.date_hbox.addWidget(end_date_label)
         self.end_date_dateedit = STDateTimeEdit()
-        self.end_date_dateedit.setMinimumDateTime(QDateTime(config.db[self.parent_.files[-1]]['start_time']))
-        self.end_date_dateedit.setMaximumDateTime(QDateTime(config.db[self.parent_.files[-1]]['end_time']))
-        self.end_date_dateedit.setDateTime(QDateTime(config.db[self.parent_.files[-1]]['end_time']))
+        self.end_date_dateedit.setMinimumDateTime(QDateTime(config.db[self.parent_().files[-1]]['start_time']))
+        self.end_date_dateedit.setMaximumDateTime(QDateTime(config.db[self.parent_().files[-1]]['end_time']))
+        self.end_date_dateedit.setDateTime(QDateTime(config.db[self.parent_().files[-1]]['end_time']))
         self.date_hbox.addWidget(self.end_date_dateedit)
         
         
@@ -185,7 +199,7 @@ class DomainConfigWidget(QWidget):
         self.main_vbox.addLayout(self.frequency_hbox)
         self.max_freq_label = QLabel('Maximum frequency of interest:')
         self.frequency_hbox.addWidget(self.max_freq_label)
-        self.max_freq_edit = QLineEdit('' + str(config.db[self.parent_.files[0]]['sampling_rate'] / 2))
+        self.max_freq_edit = QLineEdit('' + str(config.db[self.parent_().files[0]]['sampling_rate'] / 2))
         self.frequency_hbox.addWidget(self.max_freq_edit)
         self.frequency_hbox.addStretch()
         
@@ -234,7 +248,7 @@ class EstimationConfigWidget(QWidget):
     def __init__(self, parent_):
         QWidget.__init__(self)
         
-        self.parent_ = parent_
+        self.parent_ = weakref.ref(parent_)
         
         self.main_hbox = QHBoxLayout(self)
         self.main_hbox.setAlignment(Qt.AlignTop)
@@ -308,14 +322,14 @@ class EstimationConfigWidget(QWidget):
     @Slot()
     def update_info_table(self):
         if hasattr(self.parent_, 'new_sampling_rate'):
-            self.info_table.setItem(0, 1, QTableWidgetItem(frequency_fmt(self.parent_.new_sampling_rate)))
-            sample_count = len(self.parent_.signal)
+            self.info_table.setItem(0, 1, QTableWidgetItem(frequency_fmt(self.parent_().new_sampling_rate)))
+            sample_count = len(self.parent_().signal)
             self.info_table.setItem(1, 1, QTableWidgetItem(str(sample_count)))
-            max_frequency_resolution = self.parent_.new_sampling_rate * 6.0 / sample_count
+            max_frequency_resolution = self.parent_().new_sampling_rate * 6.0 / sample_count
             if self.method_combo.currentIndex() == 1:
                 max_frequency_resolution *= int(self.parameter_edit.text())
             if self.method_combo.currentIndex() == 2:
-                max_frequency_resolution = self.parent_.new_sampling_rate * 6.0 / int(self.parameter_edit.text())
+                max_frequency_resolution = self.parent_().new_sampling_rate * 6.0 / int(self.parameter_edit.text())
             if self.method_combo.currentIndex() == 3:
                 self.info_table.setItem(2, 1, QTableWidgetItem('n.a.'))
             else:

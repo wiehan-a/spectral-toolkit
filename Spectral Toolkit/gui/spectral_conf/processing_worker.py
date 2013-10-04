@@ -48,7 +48,8 @@ class ProcessingWorker(QObject):
         elif self.params['method'] == 'Welch':
             estimate = spec_est.welch(self.signal, self.params['parameter'], interpolation_factor=interpol_factor)
         else:
-            pass
+            model = sigproc.auto_regression(self.signal, self.params['parameter'])
+            estimate = 1 / spec_est.periodogram(model, window=None, interpolation_factor=interpol_factor*len(self.signal)/len(model))
         
         self.done.emit(estimate)
         

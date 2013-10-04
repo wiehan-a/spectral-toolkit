@@ -32,6 +32,7 @@ def real_fft(np.ndarray[np.float64_t, ndim=1] x, N):
     
     cdef fftw_plan forward_plan = fftw_plan_dft_r2c_1d(N, < double *> x.data, < fftw_complex *> out_buffer.data, FFTW_ESTIMATE)
     fftw_execute(forward_plan)
+    fftw_destroy_plan(forward_plan)
     return out_buffer
 
 def inverse_real_fft(np.ndarray[np.complex128_t, ndim=1] x, N):

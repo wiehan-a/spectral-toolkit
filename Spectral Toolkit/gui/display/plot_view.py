@@ -18,6 +18,9 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 
 class Plotter(QWidget):
+    
+    closed = Signal(QObject)
+    
     def __init__(self, x, y):
         QWidget.__init__(self)
         
@@ -42,6 +45,12 @@ class Plotter(QWidget):
         self.setLayout(self.main_vbox)
         
         self.show()
+        
+    def closeEvent(self, *args, **kwargs):
+        print 'Plot closed'
+        self.closed.emit(self)
+        self.closed = None
+        self.deleteLater()
 
 
 if __name__ == '__main__':

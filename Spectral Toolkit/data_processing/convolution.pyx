@@ -238,6 +238,8 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
         
     fftw_destroy_plan(forward_plan)
     fftw_destroy_plan(backward_plan)
+    fftw_free(outblock)
+    fftw_free(real_outblock)
     
     return out_buffer
     
