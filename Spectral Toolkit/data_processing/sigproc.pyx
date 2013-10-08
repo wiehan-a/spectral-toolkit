@@ -50,15 +50,19 @@ def auto_correlation_fft(np.ndarray[dtype=np.float64_t] signal, maximum_lag=3):
     cdef int N = len(signal) - 1
     cdef int m
     
-    cdef np.ndarray[dtype = np.float64_t] working_space = np.ascontiguousarray(np.hstack((signal, np.zeros(shape=(maximum_lag), dtype=np.float64))), dtype=np.float64)
-    cdef np.ndarray[np.complex128_t] DFT = mfftw.real_fft(working_space, len(working_space))
-    abs_squared(int(len(working_space) / 2 + 1), < fftw_complex *> & DFT.data[0])
     
-    cdef np.ndarray[dtype = np.float64_t] x = mfftw.inverse_real_fft(DFT, len(working_space)) / (2 * N + 1)
+    
+    cdef np.ndarray[dtype = np.float64_t] working_space = np.ascontiguousarray(np.hstack((signal, np.zeros(shape=(maximum_lag), dtype=np.float64))), dtype=np.float64)
+    cdef int len_working_space = len(working_space)
+    cdef np.ndarray[np.complex128_t] DFT = mfftw.real_fft(working_space, len(working_space))
+    working_space = None
+    abs_squared(int(len_working_space / 2 + 1), < fftw_complex *> & DFT.data[0])
+    
+    working_space = mfftw.inverse_real_fft(DFT, len_working_space) / (2 * N + 1)
 
     cdef int idx
     for idx in xrange(maximum_lag + 1):
-        estimate[idx] = x[idx]
+        estimate[idx] = working_space[idx]
     
     return estimate
 

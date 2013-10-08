@@ -119,6 +119,8 @@ class SpectralConf(QWidget):
         
         self.signal = None
         signal = 10 * np.log10(signal)
+        with open('last.spec', 'wb') as f:
+            np.save(f, signal)
         signal = downsample_for_display(signal)
         new_plot = Plotter((self.new_sampling_rate / 2) * np.arange(len(signal)) / len(signal), signal)
         new_plot.closed.connect(self.parent_().plot_closed_slot)
@@ -321,7 +323,7 @@ class EstimationConfigWidget(QWidget):
         
     @Slot()
     def update_info_table(self):
-        if hasattr(self.parent_, 'new_sampling_rate'):
+        if hasattr(self.parent_(), 'new_sampling_rate'):
             self.info_table.setItem(0, 1, QTableWidgetItem(frequency_fmt(self.parent_().new_sampling_rate)))
             sample_count = len(self.parent_().signal)
             self.info_table.setItem(1, 1, QTableWidgetItem(str(sample_count)))
