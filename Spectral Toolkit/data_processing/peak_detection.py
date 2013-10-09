@@ -41,21 +41,11 @@ def cwt(signal, scales, sampling_rate=1):
     CWT = None
     for scale in scales:
         wavelet = mexican_hat_wavelet(a=scale, sampling_rate=sampling_rate)[1]
-#         plt.plot(wavelet)
-#         plt.show()
-#         print len(wavelet)
         delay = int((len(wavelet) - 1) / 2)
-        
         CWT_ = np.convolve(np.hstack((signal, np.zeros(delay + 1, dtype=np.float64)))  , wavelet)[delay + 1:-len(wavelet)]
-#         print len(CWT_)
-#         CWT_ = multirate.decimate(CWT_, 10)
-#         CWT_ = multirate.decimate(CWT_, 10)
-#         CWT_ = multirate.decimate(CWT_, 10)
-        
         if CWT is None:
             CWT = CWT_
         else:
-            # CWT = np.vstack((CWT, 20 * np.log10(np.abs((CWT_)))))
             CWT = np.vstack((CWT, CWT_))
     
     return CWT
@@ -79,7 +69,7 @@ def local_maxima(signal, window):
     
     return sorted(list(maxima))
 
-def find_ridges(ridge_list, scales, gap_threshold=3, distance_scale=1.1):
+def find_ridges(ridge_list, scales, gap_threshold=3, distance_scale=1.05):
     ridge_list = copy.deepcopy(ridge_list)
     ridge_lines = [RidgeLine(x, len(scales) - 1) for x in ridge_list[-1]]
     idx = len(ridge_list) - 2
@@ -124,8 +114,41 @@ def find_ridges(ridge_list, scales, gap_threshold=3, distance_scale=1.1):
         idx -= 1
     
     return ridge_lines
+
+def max_coefficient_along_ridge(ridge_line, cwt_matrix):
+    max = float('-inf')
+    for a, b in zip(range(ridge_line.start_scale, ridge_line.start_scale - len(ridge_line.nodes), -1), ridge_line.nodes):
+        t = cwt_matrix[a, b]
+        if t > max:
+            max = t
+    return max
+
+def percentile(data, percent=0.95):
+    '''
+    Adapted from: http://code.activestate.com/recipes/511478
+    '''
+    data = sorted(data)
+    k = percent * (len(data) - 1)
+    f = int(np.floor(k))
+    c = int(np.ceil(k))
+    if f == c:
+        return data[f]
+    d0 = data[f] * (c - k)
+    d1 = data[c] * (k - f)
+    return d0 + d1
+
+def ridge_snrs(ridge_lines, cwt_matrix, window_fact=0.1):
+    window_half_length = int(window_fact * len(cwt_matrix[0]) / 2.0)
+    x = np.empty(shape=(len(ridge_lines)), dtype=np.float64)
+    snr = np.empty(shape=(len(ridge_lines)), dtype=np.float64)
+    for idx, ridge_line in enumerate(ridge_lines):
+        signal_strength = max_coefficient_along_ridge(ridge_line, cwt_matrix)
+        windowed = np.abs(cwt_matrix[0, max(0, ridge_line.nodes[-1] - window_half_length) : min(ridge_line.nodes[-1] + window_half_length, len(cwt_matrix[0]))])
+        noise_score = percentile(windowed, percent=0.95)
+        x[idx] = np.median(ridge_line.nodes)
+        snr[idx] = signal_strength / noise_score
     
-        
+    return x, snr
     
 if '__main__' == '__main__':
 #     ws = [1, 4, 8, 16]
@@ -137,38 +160,54 @@ if '__main__' == '__main__':
 #     arrx = multirate.decimate(arrx, 10)
 #     arrx = multirate.decimate(arrx, 10)
 #     arrx = multirate.decimate(arrx, 10)
+    
+    ridge_list = []
+    scales = np.arange(2, 100, 2)
+    CWT = cwt(arrx, scales, sampling_rate=1)
+    for scale in xrange(1, len(CWT) + 1):
+        maxima = local_maxima(CWT[scale - 1, :], 5 * scale)
+        ridge_list.append(maxima)
+    ridge_lines = find_ridges(ridge_list, scales)
+    x_snr, snr = ridge_snrs(ridge_lines, CWT)
 
     # maxima = local_maxima(arrx, 100)
+    
     fig = plt.figure()
     ax = fig.add_subplot(211)
     ax.plot(arrx)
+    
+    for x, s in zip(x_snr, snr):
+        if s >= 15:
+            ax.plot(x, arrx[x], 'ro')
+        elif s >= 10:
+            ax.plot(x, arrx[x], 'yo')
+        elif s >= 5:
+            ax.plot(x, arrx[x], 'bo')
+        
     print len(arrx)
     
 #     for m in maxima:
 #         plt.plot(m, arrx[m], 'rx')
 
 
-    scales = np.arange(2, 100, 2)
-    ax = fig.add_subplot(212)
-    CWT = cwt(arrx, scales, sampling_rate=1)
+    ax = fig.add_subplot(312)
+    
     imgplot = ax.imshow(CWT)
     imgplot.set_cmap('spectral')
     ax.set_aspect(70)
     plt.colorbar(mappable=imgplot)
     
-    ridge_list = []
-    
-    for scale in xrange(1, len(CWT) + 1):
-        maxima = local_maxima(CWT[scale - 1, :], 5 * scale)
-        ridge_list.append(maxima)
+
 #         for m in maxima:
 #             plt.plot(m, scale, 'bx')
 
-    for rl in find_ridges(ridge_list, scales):
+    for rl in ridge_lines:
         for x in rl.nodes:
-            scale_list = list(reversed(np.arange(rl.start_scale - len(rl.nodes) + 1,  rl.start_scale+1)))        
+            scale_list = list(reversed(np.arange(rl.start_scale - len(rl.nodes) + 1, rl.start_scale + 1)))        
             plt.plot(rl.nodes, scale_list, 'b-')
             
+    ax = fig.add_subplot(313)
+    ax.stem(x_snr, snr)
     plt.show()
     
     

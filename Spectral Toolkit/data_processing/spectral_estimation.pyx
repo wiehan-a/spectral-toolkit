@@ -10,7 +10,7 @@ cimport numpy as np
 import windowing
 import fftw_wrapper.fftw_py as mfftw
 
-def periodogram(signal, window=windowing.apply_blackman, interpolation_factor=1, inplace_windowing=False):
+def periodogram(signal, window=windowing.apply_blackman_harris, interpolation_factor=1, inplace_windowing=False):
     '''
     Performs the periodogram spectral estimation technique on
     the data.

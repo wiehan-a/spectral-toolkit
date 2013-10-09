@@ -94,13 +94,13 @@ mfftw.import_wisdom()
 # plt.plot((0.025 / len(transform)) * np.arange(len(transform)), 10 * np.log10(transform))
 # plt.show()
 
-import data_processing.peak_detection
+#import data_processing.peak_detection
 
-# qt_app = QApplication(sys.argv)
-#            
-# app = Library()
-# app.run()
-# qt_app.exec_()
+qt_app = QApplication(sys.argv)
+             
+app = Library()
+app.run()
+qt_app.exec_()
 
 # from data_processing.convolution import *
 # from data_processing.filter_design import *

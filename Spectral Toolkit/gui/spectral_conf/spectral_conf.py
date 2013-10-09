@@ -14,6 +14,7 @@ import sys, time, os, utils, config
 from gui.stdateedit import *
 from processing_worker import *
 import numpy as np
+from data_processing import windowing
 
 from data_processing.display_friendly import downsample_for_display
 
@@ -132,7 +133,8 @@ class SpectralConf(QWidget):
                                 'method' : self.hosted_widget.estimation_methods[self.hosted_widget.method_combo.currentIndex()],
                                 'do_interpol' : self.hosted_widget.interpolate_chkbx.isChecked(),
                                 'interpol_factor' : float(self.hosted_widget.interpolate_edit.text()),
-                                'parameter' : int(self.hosted_widget.parameter_edit.text())
+                                'parameter' : int(self.hosted_widget.parameter_edit.text()),
+                                'window' : windowing.windows[self.hosted_widget.window_list[self.hosted_widget.window_combo.currentIndex()]]
                             })
         
         self.processing_worker = ProcessingWorker(self.signal, self.params)
@@ -274,7 +276,9 @@ class EstimationConfigWidget(QWidget):
         self.window_label = QLabel('Data window')
         self.window_hbox.addWidget(self.window_label)
         self.window_combo = QComboBox()
-        self.window_combo.addItems(['Blackman'])
+        self.window_list = windowing.windows.keys()
+        self.window_combo.currentIndexChanged.connect(self.update_info_table)
+        self.window_combo.addItems(self.window_list)
         self.window_hbox.addWidget(self.window_combo)
         
         self.interpolate_hbox = QHBoxLayout()
@@ -314,7 +318,7 @@ class EstimationConfigWidget(QWidget):
         self.info_table.horizontalHeader().hide()
         
         items = ['Sampling rate', 'Number of samples',
-                 'Main lobe width', 'Side lobe attenuation']
+                 '3dB Bandwidth', 'Side lobe attenuation']
         for idx, val in enumerate(items):
             self.info_table.setItem(idx, 0, QTableWidgetItem(val))
         
@@ -324,21 +328,22 @@ class EstimationConfigWidget(QWidget):
     @Slot()
     def update_info_table(self):
         if hasattr(self.parent_(), 'new_sampling_rate'):
+            bw = windowing.bw[self.window_list[self.window_combo.currentIndex()]]
             self.info_table.setItem(0, 1, QTableWidgetItem(frequency_fmt(self.parent_().new_sampling_rate)))
             sample_count = len(self.parent_().signal)
             self.info_table.setItem(1, 1, QTableWidgetItem(str(sample_count)))
-            max_frequency_resolution = self.parent_().new_sampling_rate * 6.0 / sample_count
+            max_frequency_resolution = self.parent_().new_sampling_rate * bw / sample_count
             if self.method_combo.currentIndex() == 1:
                 max_frequency_resolution *= int(self.parameter_edit.text())
             if self.method_combo.currentIndex() == 2:
-                max_frequency_resolution = self.parent_().new_sampling_rate * 6.0 / int(self.parameter_edit.text())
+                max_frequency_resolution = self.parent_().new_sampling_rate * bw / int(self.parameter_edit.text())
             if self.method_combo.currentIndex() == 3:
                 self.info_table.setItem(2, 1, QTableWidgetItem('n.a.'))
             else:
                 self.info_table.setItem(2, 1, QTableWidgetItem(frequency_fmt(max_frequency_resolution)))
             
         if hasattr(self, 'info_table'):
-            self.info_table.setItem(3, 1, QTableWidgetItem('58.1dB'))
+            self.info_table.setItem(3, 1, QTableWidgetItem(windowing.attenuation[self.window_list[self.window_combo.currentIndex()]]))
             self.info_table.resizeColumnsToContents()
         
         

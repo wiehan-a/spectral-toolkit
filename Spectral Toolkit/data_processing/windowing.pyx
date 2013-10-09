@@ -43,3 +43,51 @@ def apply_blackman(np.ndarray[dtype=np.float64_t] signal, inplace=True):
             out_buffer[idx] = signal[idx] * (a0 - a1 * cos(idx * inner_constant_1) + a2 * cos(idx * inner_constant_2))
             
     return out_buffer
+
+@cython.boundscheck(False)
+def apply_blackman_harris(np.ndarray[dtype=np.float64_t] signal, inplace=True):
+    '''
+    Applies the Blackman-Harris window to the signal:
+    
+    If inplace is False, a new buffer is allocated.
+    '''
+    
+    cdef double a0 = 0.35875
+    cdef double a1 = 0.48829
+    cdef double a2 = 0.14128
+    cdef double a3 = 0.01168
+    
+    cdef int N = len(signal)
+    
+    cdef np.ndarray[dtype = np.float64_t] out_buffer = signal
+    if not inplace:
+        out_buffer = np.empty(shape=(len(signal),), dtype=np.float64)
+        
+    cdef double inner_constant_1 = 2 * np.pi / (N - 1)
+    cdef double inner_constant_2 = 4 * np.pi / (N - 1)
+    cdef double inner_constant_3 = 6 * np.pi / (N - 1)
+    
+    cdef int idx = 0
+    with nogil:
+        for idx in prange(N, num_threads=8):
+            out_buffer[idx] = signal[idx] * (a0 - a1 * cos(idx * inner_constant_1) + a2 * cos(idx * inner_constant_2) - a3 * cos(idx * inner_constant_3))
+            
+    return out_buffer
+
+windows = {
+                'Brick Wall' : None,
+                'Blackman' : apply_blackman,
+                'Blackman-Harris' : apply_blackman_harris
+          }
+
+attenuation = {
+                'Brick Wall' : '13 dB', 
+                'Blackman' : '58 dB',
+                'Blackman-Harris' : '92 dB'
+          }
+
+bw = {
+                'Brick Wall' : 0.89, 
+                'Blackman' : 1.68,
+                'Blackman-Harris' : 1.9
+          }

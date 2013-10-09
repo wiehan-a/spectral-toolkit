@@ -42,11 +42,11 @@ class ProcessingWorker(QObject):
         
         estimate = None
         if self.params['method'] == 'Periodogram':
-            estimate = spec_est.periodogram(self.signal, interpolation_factor=interpol_factor)
+            estimate = spec_est.periodogram(self.signal, interpolation_factor=interpol_factor, window = self.params['window'])
         elif self.params['method'] == 'Bartlett':
-            estimate = spec_est.bartlett(self.signal, self.params['parameter'], interpolation_factor=interpol_factor)
+            estimate = spec_est.bartlett(self.signal, self.params['parameter'], interpolation_factor=interpol_factor, window = self.params['window'])
         elif self.params['method'] == 'Welch':
-            estimate = spec_est.welch(self.signal, self.params['parameter'], interpolation_factor=interpol_factor)
+            estimate = spec_est.welch(self.signal, self.params['parameter'], interpolation_factor=interpol_factor, window = self.params['window'])
         else:
             model = sigproc.auto_regression(self.signal, self.params['parameter'])
             estimate = 1 / spec_est.periodogram(model, window=None, interpolation_factor=interpol_factor*len(self.signal)/len(model))
