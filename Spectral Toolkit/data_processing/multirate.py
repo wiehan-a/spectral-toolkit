@@ -10,6 +10,8 @@ import convolution
 
 import numpy as np
 
+import matplotlib.pyplot as plt
+
 transition_band = 0.1
 attenuation = 60
 
@@ -32,17 +34,20 @@ def decimate(signal, factor):
     cut_off_frequency = 1 / factor
     filter = filter_design.design_low_pass_fir(cut_off_frequency, transition_band * cut_off_frequency, attenuation, 1)
     
-    delay = (len(filter)-1)/2
+#     print len(signal), len(filter)
     
-    while len(filter) >= len(signal):
-        raise NotEnoughSamplesException('Filter length exceeds signal length, try relaxing constraints')
+    delay = int((len(filter)-1)/2 + 1)
+    
+#     if len(filter) >= len(signal):
+#         raise NotEnoughSamplesException('Filter length exceeds signal length, try relaxing constraints')
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
     
     #signal = np.convolve(signal, filter)
-    signal = convolution.fast_convolve_fftw_w(signal, filter)
+    signal = convolution.fast_convolve_fftw_w(signal, filter, delay=delay)
+#     print len(signal)
     
-    decimated = np.empty(shape=(np.ceil(len(signal[delay+1:]) / factor),), dtype=np.float64)
-    decimated[:] = signal[delay+1::factor]
+    decimated = np.zeros(shape=(np.ceil(len(signal) / factor),), dtype=np.float64)
+    decimated[:] = signal[::factor]
     
     return decimated
         

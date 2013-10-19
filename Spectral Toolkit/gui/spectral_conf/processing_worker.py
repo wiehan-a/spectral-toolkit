@@ -12,6 +12,8 @@ import data_access
 from datetime import timedelta
 import numpy as np
 
+import matplotlib.pyplot as plt
+
 import data_processing.multirate as multirate
 import data_processing.sigproc as sigproc
 import data_processing.convolution as convolution
@@ -71,6 +73,7 @@ class PreProcessingWorker(QObject):
         end_sample = sr * (self.params['end_time'] - db[files[0]]['end_time']).total_seconds() - 1
         
         signal = data_engines[db[files[0]]['source']].read_in_filenames(files)[start_sample:end_sample]
+        signal = signal - np.mean(signal)
         
         mf = self.params['max_frequency']
         decimation_factor = int((sr / 2.0) / mf)

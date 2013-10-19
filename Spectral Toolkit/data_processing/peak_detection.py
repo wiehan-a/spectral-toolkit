@@ -12,7 +12,7 @@ from multirate import *
 from data_processing.convolution import fast_convolve_fftw_w
 
 from data_access.segy import *
-from data_processing import multirate
+from data_processing import multirate, display_friendly
 
 import bisect, copy
 
@@ -41,8 +41,9 @@ def cwt(signal, scales, sampling_rate=1):
     CWT = None
     for scale in scales:
         wavelet = mexican_hat_wavelet(a=scale, sampling_rate=sampling_rate)[1]
-        delay = int((len(wavelet) - 1) / 2)
-        CWT_ = np.convolve(np.hstack((signal, np.zeros(delay + 1, dtype=np.float64)))  , wavelet)[delay + 1:-len(wavelet)]
+        delay = int((len(wavelet) - 1) / 2) + 1
+        CWT_ = fast_convolve_fftw_w(signal, wavelet, delay=delay)
+#         print delay, len(CWT_)
         if CWT is None:
             CWT = CWT_
         else:
@@ -149,17 +150,9 @@ def ridge_snrs(ridge_lines, cwt_matrix, window_fact=0.1):
         snr[idx] = signal_strength / noise_score
     
     return x, snr
-    
-if '__main__' == '__main__':
-#     ws = [1, 4, 8, 16]
-#     for w in ws:
-#         x, y = morlet_wavelet(a=w, sampling_rate=1)
-#         plt.plot(x, y, 'x-')
-#     plt.show()
-    arrx = np.load('last.spec')
-#     arrx = multirate.decimate(arrx, 10)
-#     arrx = multirate.decimate(arrx, 10)
-#     arrx = multirate.decimate(arrx, 10)
+
+def peak_detection(arrx):
+    arrx = display_friendly.downsample_for_display(arrx, target_length=20000)
     
     ridge_list = []
     scales = np.arange(2, 100, 2)
@@ -190,23 +183,23 @@ if '__main__' == '__main__':
 #         plt.plot(m, arrx[m], 'rx')
 
 
-    ax = fig.add_subplot(312)
-    
-    imgplot = ax.imshow(CWT)
-    imgplot.set_cmap('spectral')
-    ax.set_aspect(70)
-    plt.colorbar(mappable=imgplot)
+#     ax = fig.add_subplot(312)
+#     
+#     imgplot = ax.imshow(CWT)
+#     imgplot.set_cmap('spectral')
+#     ax.set_aspect(70)
+#     plt.colorbar(mappable=imgplot)
     
 
 #         for m in maxima:
 #             plt.plot(m, scale, 'bx')
 
-    for rl in ridge_lines:
-        for x in rl.nodes:
-            scale_list = list(reversed(np.arange(rl.start_scale - len(rl.nodes) + 1, rl.start_scale + 1)))        
-            plt.plot(rl.nodes, scale_list, 'b-')
+#     for rl in ridge_lines:
+#         for x in rl.nodes:
+#             scale_list = list(reversed(np.arange(rl.start_scale - len(rl.nodes) + 1, rl.start_scale + 1)))        
+#             plt.plot(rl.nodes, scale_list, 'b-')
             
-    ax = fig.add_subplot(313)
+    ax = fig.add_subplot(212)
     ax.stem(x_snr, snr)
     plt.show()
     

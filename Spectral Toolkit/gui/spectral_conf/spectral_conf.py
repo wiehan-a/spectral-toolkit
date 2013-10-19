@@ -14,7 +14,7 @@ import sys, time, os, utils, config
 from gui.stdateedit import *
 from processing_worker import *
 import numpy as np
-from data_processing import windowing
+from data_processing import windowing, peak_detection
 
 from data_processing.display_friendly import downsample_for_display
 
@@ -109,23 +109,41 @@ class SpectralConf(QWidget):
         self.progress_bar.setValue(1)
         
         self.signal = signal
+        
+#         print signal 
+        
         self.new_sampling_rate = new_sampling_rate
         self.hosted_widget.update_info_table()
         
     @Slot(np.ndarray)
     def processing_done_slot(self, signal):
-        self.next_button.setEnabled(True)
         self.progress_bar.setMaximum(1)
         self.progress_bar.setValue(1)
-        
         self.signal = None
-        signal = 10 * np.log10(signal)
+        self.spectrum = signal
+        
+        self.view_spectrum_button = QPushButton('View spectrum')
+        self.view_spectrum_button.clicked.connect(self.view_spectrum_slot)
+        self.main_vbox.addWidget(self.view_spectrum_button)
+#         self.export_spectrum_button = QPushButton('Export spectrum')
+#         self.main_vbox.addWidget(self.view_spectrum_button)
+        self.peak_button = QPushButton('Perform peak detection')
+        self.peak_button.clicked.connect(self.peak_detection_slot)
+        self.main_vbox.addWidget(self.peak_button)
+        
+    @Slot()
+    def view_spectrum_slot(self):
+        signal = 10 * np.log10(self.spectrum)
         with open('last.spec', 'wb') as f:
-            np.save(f, signal)
+            np.save(f, self.spectrum)
         signal = downsample_for_display(signal)
         new_plot = Plotter((self.new_sampling_rate / 2) * np.arange(len(signal)) / len(signal), signal)
         new_plot.closed.connect(self.parent_().plot_closed_slot)
         self.parent_().plots.append(new_plot)
+        
+    @Slot()
+    def peak_detection_slot(self):
+        peak_detection.peak_detection(10*np.log10(self.spectrum))
         
     @Slot()
     def next_slot_estim(self):

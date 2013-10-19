@@ -166,20 +166,11 @@ class Library(QWidget):
         
     @Slot(QObject)
     def spec_est_close_slot(self, window):
-#         print 'I happen too'
-#         print sys.getrefcount(window)
         self.estimation_windows.remove(window)
-#         print sys.getrefcount(window)
-#         from guppy import hpy
-#         h = hpy()
-#         print h.heap()
-#         import objgraph
-#         objgraph.show_backrefs([window], filename='sample-graph.png')
-#         print self.estimation_windows
+
         
     @Slot(QObject)
     def plot_closed_slot(self, plot):
-#         print 'I happen'
         self.plots.remove(plot)
         
     @Slot()
@@ -187,7 +178,6 @@ class Library(QWidget):
         self.downloader = Downloader()
         self.downloader.run()
         self.downloader.finished_downloading_signal.connect(self.table_model.refreshModel)
-        
         
     def run(self):
         self.show()
