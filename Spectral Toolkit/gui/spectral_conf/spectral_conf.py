@@ -10,11 +10,12 @@ import weakref
 
 from PySide.QtCore import *
 from PySide.QtGui import *
-import sys, time, os, utils, config
+import sys, time, os, utils, config, struct
 from gui.stdateedit import *
 from processing_worker import *
 import numpy as np
 from data_processing import windowing, peak_detection
+from data_access import export_fd
 
 from data_processing.display_friendly import downsample_for_display
 
@@ -122,6 +123,12 @@ class SpectralConf(QWidget):
         self.signal = None
         self.spectrum = signal
         
+        self.export_python_button = QPushButton("Export to Python/NumPy")
+        self.export_python_button.clicked.connect(self.export_python_spectrum)
+        self.export_matlab_button = QPushButton("Export to MATLAB")
+        self.export_matlab_button.clicked.connect(self.export_matlab_spectrum)
+        self.main_vbox.addWidget(self.export_python_button)
+        self.main_vbox.addWidget(self.export_matlab_button)
         self.view_spectrum_button = QPushButton('View spectrum')
         self.view_spectrum_button.clicked.connect(self.view_spectrum_slot)
         self.main_vbox.addWidget(self.view_spectrum_button)
@@ -132,10 +139,28 @@ class SpectralConf(QWidget):
         self.main_vbox.addWidget(self.peak_button)
         
     @Slot()
+    def export_matlab_spectrum(self):
+        f_qt = QFileDialog.getSaveFileName(self, 'Save', filter='*.m')
+        script = export_fd.make_matlab(f_qt)
+        if f_qt is not None:
+            with open(f_qt[0], 'w') as f:
+                f.write(script)
+            with open(f_qt[0]+".data", 'wb') as f:
+                struct.pack_into(f, 'f', 0, self.spectrum)
+
+    @Slot()
+    def export_python_spectrum(self):
+        f_qt = QFileDialog.getSaveFileName(self, 'Save', filter='*.py')
+        script = export_fd.make_numpy(f_qt)
+        if f_qt is not None:
+            with open(f_qt[0], 'w') as f:
+                f.write(script)
+            with open(f_qt[0]+".data", 'wb') as f:
+                struct.pack_into(f, 'f', 0, self.spectrum)
+        
+    @Slot()
     def view_spectrum_slot(self):
         signal = 10 * np.log10(self.spectrum)
-        with open('last.spec', 'wb') as f:
-            np.save(f, self.spectrum)
         signal = downsample_for_display(signal)
         new_plot = Plotter((self.new_sampling_rate / 2) * np.arange(len(signal)) / len(signal), signal)
         new_plot.closed.connect(self.parent_().plot_closed_slot)

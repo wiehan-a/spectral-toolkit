@@ -14,6 +14,9 @@ from gui.downloader.downloadconfirmwidget import *
 from gui.downloader.dataselectorwidgets import *
 from gui.stdateedit import *
 
+import data_access.errors
+from data_access.errors import CancelException
+
 
 class Downloader(QWidget):
     
@@ -113,6 +116,27 @@ class Downloader(QWidget):
     def go_download_more_slot(self):
         self.widget_stack = []
         self.switch_in_new_hosted_widget(DataSelectorWidget(), forward=True)
+        
+    @Slot()
+    def cancel_download_slot(self):
+        self.setVisible(False)
+        print "asking download worker to cancel"
+        self.hosted_widget.worker.cancel()
+        
+    @Slot()
+    def cancel_successful(self):
+        print "cancel_successful"
+        self.deleteLater()
+        
+    @Slot()
+    def no_data_slot(self):
+        msgBox = QMessageBox()
+        msgBox.setText("Could not find the requested data on the server.")
+        msgBox.setIcon(QMessageBox.Critical)
+        msgBox.exec_()
+        
+        self.go_back()
+        self.go_back()
     
     def run(self):
         self.show()
@@ -203,11 +227,14 @@ class DownloaderWidget(QWidget):
                               'overall_bytes': 0})
         
         self.worker = self.data_engine.DownloaderWorker(self.params)
+        self.worker.cancel_done.connect(self.parent_.cancel_successful)
+        self.worker.no_data.connect(self.parent_.no_data_slot)
         self.wthread = QThread()
         self.worker.moveToThread(self.wthread)
         self.worker.progress_update.connect(self.update_progress)
         self.wthread.started.connect(self.worker.start_downloading)
         self.worker.done.connect(self.wthread.quit)
+        self.wthread.finished.connect(self.wthread.deleteLater)
         self.worker.done.connect(self.parent_.done_slot)
         self.wthread.start()
         
@@ -218,6 +245,7 @@ class DownloaderWidget(QWidget):
         back.clicked.connect(parent.go_back)
         
         cancel = QPushButton('Cancel')
+        cancel.clicked.connect(parent.cancel_download_slot)
         # download.clicked.connect(parent.download_confirm_slot)
         
         buttons = {'left' : [],

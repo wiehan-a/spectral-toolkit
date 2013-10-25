@@ -11,6 +11,8 @@ import datetime
 import os.path
 import utils
 
+from errors import *
+
 from config import *
 from PySide.QtCore import *
 
@@ -30,6 +32,7 @@ class ControlledFTP:
     ftp_connection = None
     file_list_cache = {}
     download_callbacks = []
+    cancel = False
     
     def __enter__(self):
         if self.ftp_connection is None:
@@ -41,6 +44,10 @@ class ControlledFTP:
         if self.ftp_connection != None:
             self.ftp_connection.close()
         self.ftp_connection = None
+        if self.cancel:
+            print 'removing file'
+            self.file.close()
+            os.remove(self.file.name)
     
     def get_file_list(self, date, cache=True):
         if cache and (date in self.file_list_cache):
@@ -58,6 +65,9 @@ class ControlledFTP:
             return []
         
     def download_persist_callback(self, buffer):
+        if self.cancel:
+            print 'raising exception in download loop'
+            raise CancelException
         for callback in self.download_callbacks: 
             callback(buffer)
         self.file.write(buffer)
@@ -85,6 +95,10 @@ class ControlledFTP:
     def get_file_name(self, date, component):
         if date not in self.file_list_cache:
             self.get_file_list(date)
+            
+        if date not in self.file_list_cache:
+            print self.file_list_cache
+            
         file_list = self.file_list_cache[date]
         return [x for x in file_list if component in x][0]
     
@@ -118,6 +132,8 @@ class DownloaderWorker(QObject):
     
     progress_update = Signal(dict)
     done = Signal()
+    cancel_done = Signal()
+    no_data = Signal()
     
     def __init__(self, params):
         QObject.__init__(self)
@@ -133,8 +149,14 @@ class DownloaderWorker(QObject):
                     'cur_file_bytes': self.cur_size,
                     'overall_bytes': self.size + self.cur_size
                    })
+        
+    @Slot()
+    def cancel(self):
+        if hasattr(self, 'current_handle'):
+            print 'setting cancel flag'
+            self.current_handle.cancel = True
     
-    Slot()
+    @Slot()
     def start_downloading(self):
         file_size = get_single_file_size(self.params)
         
@@ -143,6 +165,7 @@ class DownloaderWorker(QObject):
         self.cur_size = 0
         
         with ControlledFTP() as handle:
+            self.current_handle = handle
             sd = self.params['start_date']                
             handle.download_callbacks = [self.callback]
             while sd <= self.params['end_date']:                 
@@ -150,7 +173,16 @@ class DownloaderWorker(QObject):
                     self.cur_size = 0
                     print 'Downloading', sd, c
 
-                    handle.download(sd, c, self.params)
+                    try:
+                        handle.download(sd, c, self.params)
+                    except CancelException:
+                        print "exiting downloader loop"
+                        self.cancel_done.emit()
+                        return
+                    except KeyError:
+                        print 'Data does not exist on server :/'
+                        self.no_data.emit()
+                        return
 
                     self.size += file_size
                     self.count += 1

@@ -31,15 +31,16 @@ def decimate(signal, factor):
     
     assert type(factor) == int
     
-    cut_off_frequency = 1 / factor
+    cut_off_frequency = 0.5 / factor
     filter = filter_design.design_low_pass_fir(cut_off_frequency, transition_band * cut_off_frequency, attenuation, 1)
     
+    print len(signal), len(filter), factor
 #     print len(signal), len(filter)
     
     delay = int((len(filter)-1)/2 + 1)
     
-#     if len(filter) >= len(signal):
-#         raise NotEnoughSamplesException('Filter length exceeds signal length, try relaxing constraints')
+    if len(filter) >= len(signal):
+        raise NotEnoughSamplesException('Filter length exceeds signal length, try relaxing constraints')
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
     
     #signal = np.convolve(signal, filter)

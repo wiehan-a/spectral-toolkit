@@ -24,7 +24,7 @@ from data_processing.sigproc import *
 mfftw.import_wisdom()
 
  
-#import benchmarks.autocorrelation
+# import benchmarks.autocorrelation
 
 # from data_access.segy import *
 
@@ -97,7 +97,7 @@ mfftw.import_wisdom()
 #import data_processing.peak_detection
 
 qt_app = QApplication(sys.argv)
-             
+              
 app = Library()
 app.run()
 qt_app.exec_()

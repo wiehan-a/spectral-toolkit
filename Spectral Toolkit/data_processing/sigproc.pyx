@@ -58,7 +58,7 @@ def auto_correlation_fft(np.ndarray[dtype=np.float64_t] signal, maximum_lag=3):
     working_space = None
     abs_squared(int(len_working_space / 2 + 1), < fftw_complex *> & DFT.data[0])
     
-    working_space = mfftw.inverse_real_fft(DFT, len_working_space) / (2 * N + 1)
+    working_space = mfftw.inverse_real_fft(DFT, len_working_space) / (N + 1) ** 2
 
     cdef int idx
     for idx in xrange(maximum_lag + 1):
@@ -113,16 +113,16 @@ def auto_regression(signal, order=3):
 
 def get_auto_corr_matrix(signal, order=3):
     R = auto_correlation_fft(signal, order)
-    R_ = np.hstack((R[1:][::-1],R))
-    auto_corr_matrix = np.vstack((R_[-1*i+order:2*order-1*i] for i in xrange(order)))
+    R_ = np.hstack((R[1:][::-1], R))
+    auto_corr_matrix = np.vstack((R_[-1 * i + order:2 * order - 1 * i] for i in xrange(order)))
     return R, auto_corr_matrix
  
 def linear_predictor(signal, order=3):
     R, auto_corr_matrix = get_auto_corr_matrix(signal, order)
-    a = np.linalg.solve(auto_corr_matrix, -1*R[1:])
-    #print a
-    #b0s = np.dot(R, np.hstack((np.array([1]), a)))
-    #print b0s
+    a = np.linalg.solve(auto_corr_matrix, -1 * R[1:])
+    # print a
+    # b0s = np.dot(R, np.hstack((np.array([1]), a)))
+    # print b0s
      
     return a
 # 

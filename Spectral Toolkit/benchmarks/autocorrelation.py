@@ -16,14 +16,16 @@ arrx = read_in_segy(['2011.08.04-00.00.00.FR.MGN.00.CGE.SEGY'])
 
 #arrx = np.arange(0, 10000000, 0.5, dtype=np.float64)
 
-start_time = time.clock()
-x = auto_correlation(arrx, maximum_lag=3)
-print x
-print 'slow correl',  time.clock() - start_time
+# start_time = time.clock()
+# x = auto_correlation(arrx, maximum_lag=3)
+# print x
+# print 'slow correl',  time.clock() - start_time
+# 
+# start_time = time.clock()
+# y = auto_correlation_fft(arrx, maximum_lag=3)
+# print y
+# print 'fast correl', time.clock() - start_time
+# 
+# print 'error', np.sum(np.square(x - y)/len(arrx))
 
-start_time = time.clock()
-y = auto_correlation_fft(arrx, maximum_lag=3)
-print y
-print 'fast correl', time.clock() - start_time
-
-print 'error', np.sum(np.square(x - y)/len(arrx))
+print 5*auto_correlation_fft(np.array([1.0,2.0,3.0,4.0,5.0]), 2)

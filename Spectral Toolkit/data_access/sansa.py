@@ -38,6 +38,8 @@ class DownloaderWorker(QObject):
     
     progress_update = Signal(dict)
     done = Signal()
+    cancel_done = Signal()
+    cancel_flag = False
     
     def __init__(self, params):
         QObject.__init__(self)
@@ -50,12 +52,23 @@ class DownloaderWorker(QObject):
         self.progress_update.emit({'overall_downloaded': utils.sizeof_fmt(self.size),
                                    'overall_bytes': self.size
                                    })
+        
+    @Slot()
+    def cancel(self):
+        self.cancel_flag = True
+        self.comp_1_file.close()
+        os.remove(self.comp_1_file.name)
+        self.comp_2_file.close()
+        os.remove(self.comp_1_file.name)
+        self.comp_3_file.close()
+        os.remove(self.comp_3_file.name)
     
     def download(self, start_time, end_time):
         request = urllib2.Request(build_request_string({'start_date' : start_time,
                                                         'end_date' : end_time}))
         request.add_header('Accept-encoding', 'gzip,deflate')
         response = urllib2.urlopen(request)
+        self.response = response
         
         is_gzipped = response.headers.get('content-encoding', '').find('gzip') >= 0
         d = zlib.decompressobj(16 + zlib.MAX_WBITS)
@@ -81,7 +94,6 @@ class DownloaderWorker(QObject):
                                    'overall_bytes': self.size,
                                    'size_unknown' : True
                                    })
-        
     
     Slot()
     def start_downloading(self):
@@ -98,6 +110,9 @@ class DownloaderWorker(QObject):
         end_time = self.params['end_date']
         
         while incr_end_time < end_time:
+            if self.cancel_flag:
+                self.cancel_done.emit()
+                return
             self.download(start_time, incr_end_time)
             start_time = incr_end_time + datetime.timedelta(seconds=1)
             incr_end_time += datetime.timedelta(minutes=10)

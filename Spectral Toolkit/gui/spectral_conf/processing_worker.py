@@ -75,6 +75,8 @@ class PreProcessingWorker(QObject):
         signal = data_engines[db[files[0]]['source']].read_in_filenames(files)[start_sample:end_sample]
         signal = signal - np.mean(signal)
         
+        print len(signal)
+        
         mf = self.params['max_frequency']
         decimation_factor = int((sr / 2.0) / mf)
         
@@ -82,15 +84,21 @@ class PreProcessingWorker(QObject):
         
         self.update_message.emit('Downsampling...')
         
-        while decimation_factor >= 2:
-            if decimation_factor > 10:
-                signal = multirate.decimate(signal, 10)
-                decimation_factor /= 10
-                sr_cpy /= 10
-            else:
-                signal = multirate.decimate(signal, int(decimation_factor))
-                sr_cpy /= int(decimation_factor)
-                decimation_factor /= int(decimation_factor)
+        try:
+            while decimation_factor >= 2:
+                print len(signal)
+                if decimation_factor > 10:
+                    signal = multirate.decimate(signal, 10)
+                    decimation_factor /= 10
+                    sr_cpy /= 10
+                else:
+                    signal = multirate.decimate(signal, int(decimation_factor))
+                    sr_cpy /= int(decimation_factor)
+                    decimation_factor /= int(decimation_factor)
+        except multirate.NotEnoughSamplesException:
+            pass
+        
+        print len(signal)
 
         if self.params['do_whitening']:
             self.update_message.emit('Calculating normalisation model...')

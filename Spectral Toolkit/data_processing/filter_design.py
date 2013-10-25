@@ -72,7 +72,7 @@ def design_low_pass_fir(fc, delta_f, att, sampling_rate):
     return filter
     
 if __name__ == '__main__':
-    filter = design_low_pass_fir(10, 10, 60, 125)
+    filter = design_low_pass_fir(0.05, 0.1*0.05, 60, 1)
     print filter
     print len(filter)
     plt.plot(filter, '*-')

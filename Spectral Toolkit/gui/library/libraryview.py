@@ -18,6 +18,9 @@ import gc
 from config import *
 from gui.display.plot_td import *
 
+from data_access import export_td
+
+
 class Library(QWidget):
     
     plots = []
@@ -76,6 +79,12 @@ class Library(QWidget):
         self.spec_est_action = QAction('Spectral estimation', self)
         self.spec_est_action.triggered.connect(self.spectral_estimation_slot)
         
+        self.exp_matlab_action = QAction('Export to MATLAB', self)
+        self.exp_matlab_action.triggered.connect(self.exp_matlab_slot)
+        
+        self.exp_python_action = QAction('Export to Python/Numpy', self)
+        self.exp_python_action.triggered.connect(self.exp_python_slot)
+        
         menu.addAction(self.display_td_action)
         menu.addSeparator()
 #         menu.addAction('Downsample')
@@ -83,29 +92,54 @@ class Library(QWidget):
 #         menu.addAction('Spectral normalisation')
         menu.addAction(self.spec_est_action)
         menu.addSeparator()
-        menu.addAction('Export to MATLAB')
-        menu.addAction('Export to Python/Numpy')
+        menu.addAction(self.exp_matlab_action)
+        menu.addAction(self.exp_python_action)
         menu.addSeparator()
         menu.addAction('Delete')
         menu.exec_(QCursor.pos())
         
-    def validate_selection(self, files):
+    def validate_selection(self, files, allow_multiple_comps=False):
         if len(files) > 1:
             sources = set([db[f]['source'] for f in files])
+            multiple_comps = False
             
             if len(sources) > 1:
                 raise MultipleSourcesException()
             
             components = set([db[f]['component'] for f in files])
             
+            sampling_rates = set([db[f]['sampling_rate'] for f in files])
+            
             if len(components) > 1:
-                raise MultipleComponentsException()
+                if not allow_multiple_comps:
+                    raise MultipleComponentsException()
+            
+            if len(sampling_rates) > 1:
+                raise MultipleSamplingRatesException()
             
             files = sorted(files, key=lambda f: db[f]['start_time'])
+            f_map = {c : [] for c in components}
+            for f in files:
+                f_map[db[f]['component']].append(f)
             
-            for idx in xrange(len(files) - 1):
-                if db[files[idx + 1]]['start_time'] - db[files[idx]]['end_time'] > timedelta(seconds=1):
-                    raise NotContiguousException()
+            start_times = []
+            end_times = []
+            for c in components:
+                files = f_map[c]
+                for idx in xrange(len(files) - 1):
+                    if db[files[idx + 1]]['start_time'] - db[files[idx]]['end_time'] > timedelta(seconds=1):
+                        raise NotContiguousException()
+                start_times.append(db[files[0]]['start_time'])
+                end_times.append(db[files[-1]]['end_time'])
+            
+            if len(set(start_times)) > 1 or len(set(end_times)) > 1:
+                raise TimeMismatchException
+            
+            print f_map
+        else:
+            f_map = {db[files[0]]['component'] : files}
+            
+        return f_map
         
     
     @Slot()
@@ -134,13 +168,16 @@ class Library(QWidget):
             msgBox.setText("Please do not select data from multiple sources.")
             msgBox.setIcon(QMessageBox.Critical)
             msgBox.exec_()
-        
+            
+    def get_selected_rows_and_files(self):
+        rows = list(set([qmi.row() for qmi in self.table.selectedIndexes()]))
+        files = [self.table_model.filtered_list[r][0] for r in rows]
+        return rows, files
         
     @Slot()
     def spectral_estimation_slot(self):
         print 'spectral estimation'
-        rows = list(set([qmi.row() for qmi in self.table.selectedIndexes()]))
-        files = [self.table_model.filtered_list[r][0] for r in rows]
+        rows, files = self.get_selected_rows_and_files()
         
         try:
             self.validate_selection(files)
@@ -163,6 +200,63 @@ class Library(QWidget):
             msgBox.setText("Please do not select data from multiple sources.")
             msgBox.setIcon(QMessageBox.Critical)
             msgBox.exec_()
+            
+    def preprocess_export(self):
+        rows, files = self.get_selected_rows_and_files()
+        try:
+            f_map = self.validate_selection(files, True)
+            
+        except NotContiguousException:
+            msgBox = QMessageBox()
+            msgBox.setText("Only a selection of temporally contiguous files supported.")
+            msgBox.setIcon(QMessageBox.Critical)
+            msgBox.exec_()
+            return False
+        except MultipleComponentsException:
+            pass
+        except MultipleSourcesException:
+            msgBox = QMessageBox()
+            msgBox.setText("Please do not select data from multiple sources.")
+            msgBox.setIcon(QMessageBox.Critical)
+            msgBox.exec_()
+            return False
+        except MultipleSamplingRatesException:
+            msgBox = QMessageBox()
+            msgBox.setText("Please do not select data with different sampling rates.")
+            msgBox.setIcon(QMessageBox.Critical)
+            msgBox.exec_()
+            return False
+        except TimeMismatchException:
+            msgBox = QMessageBox()
+            msgBox.setText("Time intervals for multiple components do not align.")
+            msgBox.setIcon(QMessageBox.Critical)
+            msgBox.exec_()
+            return False
+        return f_map
+            
+    @Slot()
+    def exp_matlab_slot(self):
+        
+        f_map = self.preprocess_export()
+        if f_map:
+            print f_map
+            script = export_td.make_matlab(f_map)
+            f_qt = QFileDialog.getSaveFileName(self, 'Save', filter='*.m')
+            if f_qt is not None:
+                with open(f_qt[0], 'w') as f:
+                    f.write(script)
+
+    
+    @Slot()
+    def exp_python_slot(self):
+        f_map = self.preprocess_export()
+        if f_map:
+            print f_map
+            script = export_td.make_numpy(f_map)
+            f_qt = QFileDialog.getSaveFileName(self, 'Save', filter='*.py')
+            if f_qt is not None:
+                with open(f_qt[0], 'w') as f:
+                    f.write(script)
         
     @Slot(QObject)
     def spec_est_close_slot(self, window):
@@ -188,7 +282,13 @@ class MultipleSourcesException(Exception):
 class MultipleComponentsException(Exception):
     pass
 
+class MultipleSamplingRatesException(Exception):
+    pass
+
 class NotContiguousException(Exception):
+    pass
+
+class TimeMismatchException(Exception):
     pass
         
 
