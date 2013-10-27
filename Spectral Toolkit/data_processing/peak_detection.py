@@ -145,14 +145,15 @@ def ridge_snrs(ridge_lines, cwt_matrix, window_fact=0.1):
     for idx, ridge_line in enumerate(ridge_lines):
         signal_strength = max_coefficient_along_ridge(ridge_line, cwt_matrix)
         windowed = np.abs(cwt_matrix[0, max(0, ridge_line.nodes[-1] - window_half_length) : min(ridge_line.nodes[-1] + window_half_length, len(cwt_matrix[0]))])
-        noise_score = percentile(windowed, percent=0.95)
+        noise_score = max(percentile(windowed, percent=0.95), 0.01)
         x[idx] = np.median(ridge_line.nodes)
         snr[idx] = signal_strength / noise_score
     
     return x, snr
 
-def peak_detection(arrx):
+def peak_detection(arrx, sampling_rate):
     arrx = display_friendly.downsample_for_display(arrx, target_length=20000)
+    f_scale = sampling_rate * np.arange(len(arrx)) / 2 / len(arrx)
     
     ridge_list = []
     scales = np.arange(2, 100, 2)
@@ -162,45 +163,8 @@ def peak_detection(arrx):
         ridge_list.append(maxima)
     ridge_lines = find_ridges(ridge_list, scales)
     x_snr, snr = ridge_snrs(ridge_lines, CWT)
-
-    # maxima = local_maxima(arrx, 100)
+    x_snr = (sampling_rate / 2) * x_snr / len(arrx)
     
-    fig = plt.figure()
-    ax = fig.add_subplot(211)
-    ax.plot(arrx)
-    
-    for x, s in zip(x_snr, snr):
-        if s >= 15:
-            ax.plot(x, arrx[x], 'ro')
-        elif s >= 10:
-            ax.plot(x, arrx[x], 'yo')
-        elif s >= 5:
-            ax.plot(x, arrx[x], 'bo')
-        
-    print len(arrx)
-    
-#     for m in maxima:
-#         plt.plot(m, arrx[m], 'rx')
-
-
-#     ax = fig.add_subplot(312)
-#     
-#     imgplot = ax.imshow(CWT)
-#     imgplot.set_cmap('spectral')
-#     ax.set_aspect(70)
-#     plt.colorbar(mappable=imgplot)
-    
-
-#         for m in maxima:
-#             plt.plot(m, scale, 'bx')
-
-#     for rl in ridge_lines:
-#         for x in rl.nodes:
-#             scale_list = list(reversed(np.arange(rl.start_scale - len(rl.nodes) + 1, rl.start_scale + 1)))        
-#             plt.plot(rl.nodes, scale_list, 'b-')
-            
-    ax = fig.add_subplot(212)
-    ax.stem(x_snr, snr)
-    plt.show()
+    return arrx, x_snr, snr    
     
     

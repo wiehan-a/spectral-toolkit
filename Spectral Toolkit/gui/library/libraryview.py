@@ -12,7 +12,7 @@ from gui.library.libraryfilter import LibraryFilterWidget
 from gui.downloader.downloader import Downloader
 from gui.spectral_conf.spectral_conf import SpectralConf
 
-import gc
+import gc, os
 
 
 from config import *
@@ -85,6 +85,9 @@ class Library(QWidget):
         self.exp_python_action = QAction('Export to Python/Numpy', self)
         self.exp_python_action.triggered.connect(self.exp_python_slot)
         
+        self.delete_action = QAction('Delete', self)
+        self.delete_action.triggered.connect(self.delete_slot)
+        
         menu.addAction(self.display_td_action)
         menu.addSeparator()
 #         menu.addAction('Downsample')
@@ -95,8 +98,22 @@ class Library(QWidget):
         menu.addAction(self.exp_matlab_action)
         menu.addAction(self.exp_python_action)
         menu.addSeparator()
-        menu.addAction('Delete')
+        menu.addAction(self.delete_action)
         menu.exec_(QCursor.pos())
+        
+    @Slot()
+    def delete_slot(self):
+        rows = list(set([qmi.row() for qmi in self.table.selectedIndexes()]))
+        files = [self.table_model.filtered_list[r][0] for r in rows]
+        
+        for f in files:
+            try:
+                os.remove(f)
+                del db[f]
+            except IOError:
+                pass
+        self.table_model.refreshModel()
+        save_db()
         
     def validate_selection(self, files, allow_multiple_comps=False):
         if len(files) > 1:

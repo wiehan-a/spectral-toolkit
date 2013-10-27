@@ -49,4 +49,5 @@ def inverse_real_fft(np.ndarray[np.complex128_t, ndim=1] x, N):
     
     cdef fftw_plan forward_plan = fftw_plan_dft_c2r_1d(N, < fftw_complex *> x.data, < double *> out_buffer.data, FFTW_ESTIMATE)
     fftw_execute(forward_plan)
+    fftw_destroy_plan(forward_plan)
     return out_buffer/N

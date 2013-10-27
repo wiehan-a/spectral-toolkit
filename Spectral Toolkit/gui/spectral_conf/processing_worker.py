@@ -18,6 +18,7 @@ import data_processing.multirate as multirate
 import data_processing.sigproc as sigproc
 import data_processing.convolution as convolution
 import data_processing.spectral_estimation as spec_est
+from data_processing.discontinuity_tool import find_discontinuities
 
 data_engines = {
                    'SANSA' :  data_access.sansa,
@@ -38,21 +39,32 @@ class ProcessingWorker(QObject):
     def do_processing(self):
         N = len(self.signal)
         
+        sigpower = None
+        if self.params['fix_power']:
+            sigpower = np.sum(np.square(self.signal)) / N
+        
         interpol_factor = 1
         if self.params['do_interpol']:
             interpol_factor = self.params['interpol_factor']
         
         estimate = None
         if self.params['method'] == 'Periodogram':
-            estimate = spec_est.periodogram(self.signal, interpolation_factor=interpol_factor, window = self.params['window'])
+            estimate = spec_est.periodogram(self.signal, interpolation_factor=interpol_factor, window=self.params['window'])
         elif self.params['method'] == 'Bartlett':
-            estimate = spec_est.bartlett(self.signal, self.params['parameter'], interpolation_factor=interpol_factor, window = self.params['window'])
+            estimate = spec_est.bartlett(self.signal, self.params['parameter'], interpolation_factor=interpol_factor, window=self.params['window'])
         elif self.params['method'] == 'Welch':
-            estimate = spec_est.welch(self.signal, self.params['parameter'], interpolation_factor=interpol_factor, window = self.params['window'])
+            estimate = spec_est.welch(self.signal, self.params['parameter'], interpolation_factor=interpol_factor, window=self.params['window'])
         else:
-            model = sigproc.auto_regression(self.signal, self.params['parameter'])
-            estimate = 1 / spec_est.periodogram(model, window=None, interpolation_factor=interpol_factor*len(self.signal)/len(model))
+            model, sigma = sigproc.auto_regression(self.signal, self.params['parameter'])
+            print sigma
+            estimate = sigma / spec_est.periodogram(model, window=None, interpolation_factor=interpol_factor * len(self.signal) / len(model), disable_normalize=True)
+            model = None
         
+        if self.params['fix_power']:
+            print "fixing power"
+            estimate_power = np.sum(estimate) / len(estimate)
+            estimate = estimate * (sigpower / estimate_power)
+            print sigpower, ', ' , np.sum(estimate) / len(estimate)
         self.done.emit(estimate)
         
 class PreProcessingWorker(QObject):
@@ -73,6 +85,18 @@ class PreProcessingWorker(QObject):
         end_sample = sr * (self.params['end_time'] - db[files[0]]['end_time']).total_seconds() - 1
         
         signal = data_engines[db[files[0]]['source']].read_in_filenames(files)[start_sample:end_sample]
+        
+        pass_ = 1
+        if self.params['fix_discontinuities']:
+            self.update_message.emit('Fixing discontinuities (pass ' + str(pass_) + ")")
+            p_events = 0
+            while pass_ < 20:
+                signal, events = find_discontinuities(signal)
+                if events == 0 or events == p_events:
+                    break
+                p_events = events
+                pass_ += 1
+        
         signal = signal - np.mean(signal)
         
         print len(signal)

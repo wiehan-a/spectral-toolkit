@@ -97,7 +97,7 @@ mfftw.import_wisdom()
 #import data_processing.peak_detection
 
 qt_app = QApplication(sys.argv)
-              
+               
 app = Library()
 app.run()
 qt_app.exec_()

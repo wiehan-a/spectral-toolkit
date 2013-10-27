@@ -22,6 +22,7 @@ from data_processing.display_friendly import downsample_for_display
 from gui.display.plot_view import Plotter
 
 from utils import frequency_fmt
+from gui.spectral_conf import PeakDetectionWorker
 
 class SpectralConf(QWidget):
     
@@ -141,22 +142,22 @@ class SpectralConf(QWidget):
     @Slot()
     def export_matlab_spectrum(self):
         f_qt = QFileDialog.getSaveFileName(self, 'Save', filter='*.m')
-        script = export_fd.make_matlab(f_qt)
+        script = export_fd.make_matlab(self.params, self.new_sampling_rate, f_qt[0])
         if f_qt is not None:
             with open(f_qt[0], 'w') as f:
                 f.write(script)
-            with open(f_qt[0]+".data", 'wb') as f:
-                struct.pack_into(f, 'f', 0, self.spectrum)
+            with open(f_qt[0] + ".data", 'wb') as f:
+                self.spectrum.tofile(f)
 
     @Slot()
     def export_python_spectrum(self):
         f_qt = QFileDialog.getSaveFileName(self, 'Save', filter='*.py')
-        script = export_fd.make_numpy(f_qt)
+        script = export_fd.make_numpy(self.params, self.new_sampling_rate, f_qt[0])
         if f_qt is not None:
             with open(f_qt[0], 'w') as f:
                 f.write(script)
-            with open(f_qt[0]+".data", 'wb') as f:
-                struct.pack_into(f, 'f', 0, self.spectrum)
+            with open(f_qt[0] + ".data", 'wb') as f:
+                self.spectrum.tofile(f)
         
     @Slot()
     def view_spectrum_slot(self):
@@ -168,7 +169,30 @@ class SpectralConf(QWidget):
         
     @Slot()
     def peak_detection_slot(self):
-        peak_detection.peak_detection(10*np.log10(self.spectrum))
+        if len(self.spectrum) < 3000:
+            msgBox = QMessageBox()
+            msgBox.setText("Estimated spectrum vector is too short. Please choose a higher interpolation factor.")
+            msgBox.setIcon(QMessageBox.Critical)
+            msgBox.exec_()
+        else:
+            self.pd_worker = PeakDetectionWorker.PeakDetectionWorker(self.spectrum, self.new_sampling_rate)
+            self.pd_thread = QThread()
+            self.pd_worker.moveToThread(self.pd_thread)
+            self.pd_worker.done.connect(self.pd_done_slot)
+            self.pd_thread.started.connect(self.pd_worker.do_processing)
+            self.pd_thread.start()
+        
+    @Slot(np.ndarray, np.ndarray, np.ndarray)
+    def pd_done_slot(self, sig, x_snr, snr):
+        f_scale = self.new_sampling_rate * np.arange(len(sig)) / 2 / len(sig)
+        fig = plt.figure()
+        ax = fig.add_subplot(211)
+        ax.plot(f_scale, sig)
+            
+        ax = fig.add_subplot(212)
+        ax.stem(x_snr, snr)
+        plt.show()
+       
         
     @Slot()
     def next_slot_estim(self):
@@ -177,7 +201,8 @@ class SpectralConf(QWidget):
                                 'do_interpol' : self.hosted_widget.interpolate_chkbx.isChecked(),
                                 'interpol_factor' : float(self.hosted_widget.interpolate_edit.text()),
                                 'parameter' : int(self.hosted_widget.parameter_edit.text()),
-                                'window' : windowing.windows[self.hosted_widget.window_list[self.hosted_widget.window_combo.currentIndex()]]
+                                'window' : windowing.windows[self.hosted_widget.window_list[self.hosted_widget.window_combo.currentIndex()]],
+                                'fix_power' : self.hosted_widget.powerfix_chkbx.isChecked()
                             })
         
         self.processing_worker = ProcessingWorker(self.signal, self.params)
@@ -277,7 +302,8 @@ class DomainConfigWidget(QWidget):
                  'end_time': self.end_date_dateedit.date(),
                  'max_frequency' : float(self.max_freq_edit.text()),
                  'do_whitening' : self.whitening_chkbx.isChecked(),
-                 'whitening_order' : int(self.whitening_order_spinner.value())
+                 'whitening_order' : int(self.whitening_order_spinner.value()),
+                 'fix_discontinuities' : self.discontinuity_chkbx.isChecked()
                 }
         
     @Slot()
@@ -331,6 +357,11 @@ class EstimationConfigWidget(QWidget):
         self.interpolate_edit = QLineEdit('1.0')
         self.interpolate_hbox.addStretch()
         self.interpolate_hbox.addWidget(self.interpolate_edit)
+        
+        self.powerfix_hbox = QHBoxLayout()
+        self.left_vbox.addLayout(self.powerfix_hbox)
+        self.powerfix_chkbx = QCheckBox('Restore signal power')
+        self.powerfix_hbox.addWidget(self.powerfix_chkbx)
         
         
         self.parameter_hbox = QHBoxLayout()
