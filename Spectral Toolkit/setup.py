@@ -42,7 +42,9 @@ ext_modules = [Extension("data_processing.sigproc", ["data_processing/sigproc.py
                Extension("data_processing.windowing", ["data_processing/windowing.pyx"]),
                Extension("data_processing.spectral_estimation", ["data_processing/spectral_estimation.pyx"]),
                Extension("data_processing.discontinuity_tool", ["data_processing/discontinuity_tool.pyx"]),
+               Extension("data_processing.peak_detection", ["data_processing/peak_detection.pyx"]),
                Extension("fftw_wrapper.fftw_py", ["fftw_wrapper/fftw_py.pyx"]),
+               
                 ]
 
 setup(

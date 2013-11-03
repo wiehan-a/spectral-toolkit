@@ -13,7 +13,7 @@ from data_processing.display_friendly import *, downsample_for_display
 import matplotlib.pyplot as plt
 
 @cython.boundscheck(False)
-def find_discontinuities(np.ndarray[np.float64_t] signal, double tolerance=3, max_back=10):
+def find_discontinuities(np.ndarray[np.float64_t] signal, double tolerance=4, max_back=10):
     '''
     
     '''

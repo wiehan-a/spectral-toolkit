@@ -4,8 +4,9 @@ Created on Oct 1, 2013
 @author: Wiehan
 '''
 import multirate
+import matplotlib.pyplot as plt
 
-TARGET_LENGTH = 3000
+TARGET_LENGTH = 20000
 
 def downsample_for_display(signal, target_length=TARGET_LENGTH):
     '''
@@ -19,7 +20,8 @@ def downsample_for_display(signal, target_length=TARGET_LENGTH):
         if decimation_factor > 10:
             signal = multirate.decimate(signal, 10)
         else:
-            signal = multirate.decimate(signal, decimation_factor)
+            return signal
+            #signal = multirate.decimate(signal, decimation_factor)
             
     return signal
             

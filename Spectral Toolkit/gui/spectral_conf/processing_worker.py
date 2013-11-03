@@ -126,7 +126,7 @@ class PreProcessingWorker(QObject):
 
         if self.params['do_whitening']:
             self.update_message.emit('Calculating normalisation model...')
-            model = sigproc.auto_regression(signal, self.params['whitening_order'])
+            model,_ = sigproc.auto_regression(signal, self.params['whitening_order'])
             self.update_message.emit('Applying normalisation filter...')
             if self.params['whitening_order'] < 10:
                 print len(signal)

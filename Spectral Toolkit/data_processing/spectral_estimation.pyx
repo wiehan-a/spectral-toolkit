@@ -92,10 +92,14 @@ def welch(signal, W, window=windowing.apply_blackman, interpolation_factor=1):
     cdef np.ndarray[dtype = np.float64_t] output_buffer = np.zeros((W * interpolation_factor / 2 + 1,), dtype=np.float64)
     cdef int idx = 0
     
-    for idx in xrange(0, len(signal)-W, 1):
+    skip = int((1.0 - windowing.overlap[window])*W)
+    count = 0
+    
+    for idx in xrange(0, len(signal)-W, skip):
         output_buffer += periodogram(signal[idx:idx + W], window, interpolation_factor=interpolation_factor)
+        count += 1
         
-    return output_buffer / idx
+    return output_buffer / count
 
 
 # if __name__ == '__main__':
