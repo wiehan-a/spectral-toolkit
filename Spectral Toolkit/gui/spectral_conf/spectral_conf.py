@@ -36,7 +36,7 @@ class SpectralConf(QWidget):
         self.files = files
         self.files = sorted(self.files, key=lambda f: config.db[f]['start_time'])
         
-        self.setWindowTitle('Spectral Toolkit (Data selection)')
+        self.setWindowTitle('Spectral Toolkit (Spectral estimation)')
         self.setMinimumWidth(500)
         
         self.main_vbox = QVBoxLayout(self)

@@ -185,7 +185,7 @@ def peak_detection(arrx, sampling_rate):
         ridge_list.append(maxima)
     ridge_lines = find_ridges(ridge_list, scales)
     x_snr, snr = ridge_snrs(ridge_lines, CWT)
-    x_snr = (sampling_rate / 2) * x_snr / len(arrx)
+    x_snr = (sampling_rate) * x_snr / len(arrx)
     
     return arrx, x_snr, snr    
     

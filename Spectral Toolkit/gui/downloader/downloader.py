@@ -26,7 +26,7 @@ class Downloader(QWidget):
     def __init__(self):
 
         QWidget.__init__(self)
-        self.setWindowTitle('Spectral Toolkit (Data selection)')
+        self.setWindowTitle('Spectral Toolkit (Downloader)')
         self.setMinimumWidth(500)
         
         self.main_vbox = QVBoxLayout(self)
