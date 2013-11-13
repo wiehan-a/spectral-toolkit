@@ -18,7 +18,7 @@ from cython.parallel cimport prange, parallel
 from libc.stdlib cimport abort, malloc, free
 from libc.string cimport memcpy
 
-# @cython.boundscheck(False)
+@cython.boundscheck(False)
 def slow_convolve(np.ndarray[np.float64_t, ndim=1] x not None,
                   np.ndarray[np.float64_t, ndim=1] h not None,
                   np.ndarray[np.float64_t, ndim=1] out_buffer=None, delay=0):
@@ -55,6 +55,7 @@ def slow_convolve(np.ndarray[np.float64_t, ndim=1] x not None,
         
     return out_buffer[delay:]
 
+@cython.boundscheck(False)
 def fast_convolve(np.ndarray[np.float64_t, ndim=1] x not None,
                   np.ndarray[np.float64_t, ndim=1] h not None,
                   np.ndarray[np.float64_t, ndim=1] out_buffer=None, delay=0):
@@ -94,6 +95,7 @@ def fast_convolve(np.ndarray[np.float64_t, ndim=1] x not None,
      
     return out_buffer[delay:]
 
+@cython.boundscheck(False)
 cdef void mult_dfts(int N, fftw_complex * A, fftw_complex * B) nogil:
     '''
         Perform the N-point complex multiplication a*b and store the result in b
@@ -106,7 +108,7 @@ cdef void mult_dfts(int N, fftw_complex * A, fftw_complex * B) nogil:
         B[idxx][0] = a * c - b * d
         B[idxx][1] = b * c + a * d
 
-# @cython.boundscheck(False)
+@cython.boundscheck(False)
 def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
                   np.ndarray[np.float64_t, ndim=1] h not None,
                   np.ndarray[np.float64_t, ndim=1] out_buffer=None, delay=0):

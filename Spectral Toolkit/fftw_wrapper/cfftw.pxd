@@ -21,13 +21,13 @@ cdef extern from 'fftw3.h':
 	double *fftw_alloc_real(size_t n) nogil
 	fftw_complex *fftw_alloc_complex(size_t n) nogil
 	
-	void fftw_execute(const fftw_plan plan) nogil
-	void fftw_execute_dft_r2c(const fftw_plan p, double *input, fftw_complex *output) nogil
-	void fftw_execute_dft_c2r(const fftw_plan p, fftw_complex *input, double *output) nogil
+	void fftw_execute( fftw_plan plan) nogil
+	void fftw_execute_dft_r2c( fftw_plan p, double *input, fftw_complex *output) nogil
+	void fftw_execute_dft_c2r( fftw_plan p, fftw_complex *input, double *output) nogil
 	void fftw_destroy_plan(fftw_plan plan) nogil
 	
-	int fftw_export_wisdom_to_filename(const char *filename)
-	int fftw_import_wisdom_from_filename(const char *filename)
+	int fftw_export_wisdom_to_filename( char *filename)
+	int fftw_import_wisdom_from_filename( char *filename)
 
 	int fftw_init_threads()
 	void fftw_plan_with_nthreads(int nthreads)
