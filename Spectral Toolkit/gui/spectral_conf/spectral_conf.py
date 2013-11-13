@@ -60,6 +60,7 @@ class SpectralConf(QWidget):
         self.action_bar_hbox = QHBoxLayout()
         self.main_vbox.addLayout(self.action_bar_hbox)
         self.cancel_button = QPushButton('Cancel')
+        self.cancel_button.clicked.connect(self.cancel_slot)
         self.action_bar_hbox.addWidget(self.cancel_button)
         self.action_bar_hbox.addStretch()
         self.next_button = QPushButton('Next')
@@ -67,6 +68,10 @@ class SpectralConf(QWidget):
         self.action_bar_hbox.addWidget(self.next_button)
         
         self.setLayout(self.main_vbox)
+        
+    @Slot()
+    def cancel_slot(self):
+        print "CANCEL"
         
     @Slot()
     def next_slot_domain(self):

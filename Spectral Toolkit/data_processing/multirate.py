@@ -24,7 +24,7 @@ def decimate(signal, factor):
     
     Destroys the original signal.
      
-    Filtering is performed mitigate aliasing.
+    Filtering is performed to mitigate aliasing.
     
     A new vector is returned.
     '''

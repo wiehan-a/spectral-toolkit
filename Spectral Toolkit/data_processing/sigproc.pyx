@@ -31,6 +31,7 @@ def auto_correlation(np.ndarray[dtype=np.float64_t] signal, maximum_lag=3):
     
     return estimate / (2 * N + 1)
 
+@cython.boundscheck(False)
 cdef void abs_squared(int N, fftw_complex * A) nogil:
     '''
         Calculates the magnitude squared of A and stores the result in B
@@ -68,6 +69,7 @@ def auto_correlation_fft(np.ndarray[dtype=np.float64_t] signal, maximum_lag=3):
     
     return estimate
 
+@cython.boundscheck(False)
 def levinson_durbin_recursion(np.ndarray[dtype=np.float64_t] R):
     '''
     Performs Levinson-Durbin recursion to solve the Yule-Walker equations
@@ -104,6 +106,7 @@ def levinson_durbin_recursion(np.ndarray[dtype=np.float64_t] R):
         
     return solution
 
+@cython.boundscheck(False)
 def auto_regression(signal, order=3):
     corr_func = auto_correlation_fft
     if order < 3:
@@ -114,13 +117,14 @@ def auto_regression(signal, order=3):
     return a, np.dot(R, a)
     
     
-
+@cython.boundscheck(False)
 def get_auto_corr_matrix(signal, order=3):
     R = auto_correlation_fft(signal, order)
     R_ = np.hstack((R[1:][::-1], R))
     auto_corr_matrix = np.vstack((R_[-1 * i + order:2 * order - 1 * i] for i in xrange(order)))
     return R, auto_corr_matrix
  
+@cython.boundscheck(False)
 def linear_predictor(signal, order=3):
     R, auto_corr_matrix = get_auto_corr_matrix(signal, order)
     a = np.linalg.solve(auto_corr_matrix, -1 * R[1:])
@@ -128,29 +132,5 @@ def linear_predictor(signal, order=3):
     # b0s = np.dot(R, np.hstack((np.array([1]), a)))
     # print b0s
      
-    return a
-# 
-# def p_do(idx, signal, order, a):
-#     return np.abs(signal[idx] + np.dot(a, signal[idx-order:idx]))
-# 
-# @cython.boundscheck(False) # turn off bounds-checking for entire function
-# def predict_signal(np.ndarray[DTYPE_t, ndim=1] signal, order=3):
-#     a = linear_predictor(signal, order)[::-1]
-#     print "done with lin predict estim"
-#     N = len(signal)
-#     cdef np.ndarray[DTYPE_t, ndim=1] pred = np.zeros(N)
-#     
-#     for idx in xrange(order, N):
-#         pred[idx] = np.abs(signal[idx] + np.dot(a, signal[idx-order:idx]))
-#         
-#     print "done with error estim"
-#     #pred[order:] = Parallel(n_jobs=4, verbose=10)(delayed(p_do)(idx, signal, order, a) for idx in xrange(order, N))
-#     
-# 
-#     #plt.plot(pred, 'r')
-#     #plt.plot(np.abs(sig.lfilter([1, 0, -16, 0,  16, 0, -1], [-16], signal)), 'b')
-#     #plt.show()
-#     
-#     return pred
-#     
+    return a     
     
