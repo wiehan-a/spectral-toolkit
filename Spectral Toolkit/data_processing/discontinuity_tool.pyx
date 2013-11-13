@@ -80,7 +80,7 @@ def find_discontinuities(np.ndarray[np.float64_t] signal, double tolerance=4, ma
         signal[tup[1] + 1:forward] = (signal[tup[1] + 1:forward] - end_baseline) * window + end_baseline
         
         jump = -(end_baseline - baseline)
-        signal[tup[1] + 1:next_event_start] += jump
+        signal[tup[1] + 1:next_event_start] = signal[tup[1] + 1:next_event_start] + jump
         
         last_event_end = tup[1]
             
