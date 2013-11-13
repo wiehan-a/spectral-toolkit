@@ -34,7 +34,7 @@ class build_ext_subclass(build_ext):
                 e.include_dirs = [numpy.get_include(), 
                                   os.path.join('fftw_wrapper'),]
                 e.extra_compile_args = ['-fopenmp']
-                e.extra_link_args = ['-fopenmp']
+                e.extra_link_args = ['-fopenmp', '-lfftw3']
                 
 
         build_ext.build_extensions(self)
