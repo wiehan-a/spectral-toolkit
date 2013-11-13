@@ -55,45 +55,45 @@ def slow_convolve(np.ndarray[np.float64_t, ndim=1] x not None,
         
     return out_buffer[delay:]
 
-@cython.boundscheck(False)
-def fast_convolve(np.ndarray[np.float64_t, ndim=1] x not None,
-                  np.ndarray[np.float64_t, ndim=1] h not None,
-                  np.ndarray[np.float64_t, ndim=1] out_buffer=None, delay=0):
-    
-    '''
-    Performs the fast convolution of the signals x and h, using the
-    over-lap save method.
-    
-    y[n] = sum[k = 0:N](x[n-k]*h[k])
-    '''
-    cdef int M = len(h)
-    cdef int N = int(2 ** (np.ceil(np.log2(4 * (M - 1)))))
-    cdef int L = N - M + 1
-    cdef int X = len(x) + delay
-    print N, X
-
-    cdef Py_ssize_t out_start = 0
-    cdef Py_ssize_t start = L - (M - 1) - 1
-    cdef np.ndarray[np.complex128_t, ndim = 1] H_ = fft.rfft(h, N)
-    
-
-    
-    if out_buffer is None:
-        out_buffer = np.zeros(shape=(X,), dtype=x.dtype)
-        
-    first_block = np.hstack((np.zeros(M - 1), x[0:L]))
-    out_buffer[out_start:out_start + L] = fft.irfft(H_ * fft.rfft(first_block, N))[M - 1:]
-    out_start += L
-    
-    while start + N + 1 < X:
-        first_block = x[start + 1:start + 1 + N]
-        out_buffer[out_start:out_start + L] = fft.irfft(H_ * fft.rfft(first_block, N))[M - 1:]
-        start += L
-        out_start += L
-    
-    out_buffer[out_start:] = fft.irfft(H_ * fft.rfft(x[start + 1:], N)) [M - 1:M - 1 + len(out_buffer[out_start:])]
-     
-    return out_buffer[delay:]
+# @cython.boundscheck(False)
+# def fast_convolve(np.ndarray[np.float64_t, ndim=1] x not None,
+#                   np.ndarray[np.float64_t, ndim=1] h not None,
+#                   np.ndarray[np.float64_t, ndim=1] out_buffer=None, delay=0):
+#     
+#     '''
+#     Performs the fast convolution of the signals x and h, using the
+#     over-lap save method.
+#     
+#     y[n] = sum[k = 0:N](x[n-k]*h[k])
+#     '''
+#     cdef int M = len(h)
+#     cdef int N = int(2 ** (np.ceil(np.log2(4 * (M - 1)))))
+#     cdef int L = N - M + 1
+#     cdef int X = len(x) + delay
+#     print N, X
+# 
+#     cdef Py_ssize_t out_start = 0
+#     cdef Py_ssize_t start = L - (M - 1) - 1
+#     cdef np.ndarray[np.complex128_t, ndim = 1] H_ = fft.rfft(h, N)
+#     
+# 
+#     
+#     if out_buffer is None:
+#         out_buffer = np.zeros(shape=(X,), dtype=x.dtype)
+#         
+#     first_block = np.hstack((np.zeros(M - 1), x[0:L]))
+#     out_buffer[out_start:out_start + L] = fft.irfft(H_ * fft.rfft(first_block, N))[M - 1:]
+#     out_start += L
+#     
+#     while start + N + 1 < X:
+#         first_block = x[start + 1:start + 1 + N]
+#         out_buffer[out_start:out_start + L] = fft.irfft(H_ * fft.rfft(first_block, N))[M - 1:]
+#         start += L
+#         out_start += L
+#     
+#     out_buffer[out_start:] = fft.irfft(H_ * fft.rfft(x[start + 1:], N)) [M - 1:M - 1 + len(out_buffer[out_start:])]
+#      
+#     return out_buffer[delay:]
 
 @cython.boundscheck(False)
 cdef void mult_dfts(int N, fftw_complex * A, fftw_complex * B) nogil:
@@ -108,6 +108,7 @@ cdef void mult_dfts(int N, fftw_complex * A, fftw_complex * B) nogil:
         B[idxx][0] = a * c - b * d
         B[idxx][1] = b * c + a * d
 
+@cython.cdivision(True)
 @cython.boundscheck(False)
 def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
                   np.ndarray[np.float64_t, ndim=1] h not None,
