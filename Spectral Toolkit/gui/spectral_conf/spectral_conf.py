@@ -191,11 +191,15 @@ class SpectralConf(QWidget):
     def pd_done_slot(self, sig, x_snr, snr):
         f_scale = self.new_sampling_rate * np.arange(len(sig)) / 2 / len(sig)
         fig = plt.figure()
+        fig.subplots_adjust(hspace=0.5)
         ax = fig.add_subplot(211)
         ax.plot(f_scale, sig)
+        plt.ylabel("PSD")
             
         ax = fig.add_subplot(212)
         ax.stem(x_snr, snr)
+        plt.ylabel("SNR")
+        plt.xlabel("Frequency (Hz)")
         plt.show()
        
         
