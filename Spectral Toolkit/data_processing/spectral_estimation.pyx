@@ -30,8 +30,8 @@ def periodogram(signal, window=windowing.apply_blackman_harris, interpolation_fa
         signal = window(signal, inplace=inplace_windowing)
 
     fft_ = mfftw.real_fft(signal, interpolation_factor * N)
-    fft_ = np.square(fft_, fft_)
-    fft_ = np.abs(fft_, fft_)
+    fft_ = np.square(fft_)
+    fft_ = np.abs(fft_)
     
     if disable_normalize:
         return fft_
