@@ -84,7 +84,7 @@ class PreProcessingWorker(QObject):
         start_sample = sr * (self.params['start_time'] - db[files[0]]['start_time']).total_seconds()
         end_sample = sr * (self.params['end_time'] - db[files[0]]['end_time']).total_seconds() - 1
         
-        signal = data_engines[db[files[0]]['source']].read_in_filenames(files)[start_sample:end_sample]
+        signal = data_engines[db[files[0]]['source']].read_in_filenames(files)[start_sample : end_sample]
         
         pass_ = 1
         if self.params['fix_discontinuities']:
@@ -99,7 +99,7 @@ class PreProcessingWorker(QObject):
         
         signal = signal - np.mean(signal)
         
-        print len(signal)
+#         print len(signal)
         
         mf = self.params['max_frequency']
         decimation_factor = int((sr / 2.0) / mf)
@@ -122,15 +122,15 @@ class PreProcessingWorker(QObject):
         except multirate.NotEnoughSamplesException:
             pass
         
-        print len(signal)
+#         print len(signal)
 
         if self.params['do_whitening']:
             self.update_message.emit('Calculating normalisation model...')
             model,_ = sigproc.auto_regression(signal, self.params['whitening_order'])
             self.update_message.emit('Applying normalisation filter...')
             if self.params['whitening_order'] < 10:
-                print len(signal)
-                print len(model)
+#                 print len(signal)
+#                 print len(model)
                 signal = convolution.slow_convolve(signal, model)
             else:
                 signal = convolution.fast_convolve_fftw_w(signal, model)

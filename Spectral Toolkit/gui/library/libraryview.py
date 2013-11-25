@@ -99,7 +99,8 @@ class Library(QWidget):
         menu.addAction(self.exp_python_action)
         menu.addSeparator()
         menu.addAction(self.delete_action)
-        menu.exec_(QCursor.pos())
+        
+        menu.exec_(self.mapToGlobal(point))
         
     @Slot()
     def delete_slot(self):

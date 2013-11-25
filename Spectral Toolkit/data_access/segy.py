@@ -60,6 +60,8 @@ class SegyFileBuffer:
         self.headers = [read_segy_head(f) for f in files]
         self.buffer_size = reduce(lambda x, y: x + y, map(lambda x: x['sample_count'], self.headers))
         
+    
+        
     def load_all_files(self):
         data = np.empty(shape=(self.buffer_size,), dtype=np.float64)  
         offset = 0
