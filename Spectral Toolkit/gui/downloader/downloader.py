@@ -228,7 +228,7 @@ class DownloaderWidget(QWidget):
         
         self.worker = self.data_engine.DownloaderWorker(self.params)
         self.worker.cancel_done.connect(self.parent_.cancel_successful)
-        self.worker.no_data.connect(self.parent_.no_data_slot)
+        #self.worker.no_data.connect(self.parent_.no_data_slot)
         self.wthread = QThread()
         self.worker.moveToThread(self.wthread)
         self.worker.progress_update.connect(self.update_progress)

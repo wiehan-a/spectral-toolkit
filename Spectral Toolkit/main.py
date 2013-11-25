@@ -6,7 +6,7 @@ Created on Sep 16, 2013
 
 import matplotlib
 matplotlib.use('Qt4Agg')
-matplotlib.rcParams['backend.qt4']='PySide'
+matplotlib.rcParams['backend.qt4'] ='PySide'
 
 from PySide.QtGui import *
 from PySide.QtCore import *
