@@ -91,7 +91,7 @@ class Library(QWidget):
         menu.addAction(self.display_td_action)
         menu.addSeparator()
 #         menu.addAction('Downsample')
-        menu.addAction('Discontinuity tool')
+#        menu.addAction('Discontinuity tool')
 #         menu.addAction('Spectral normalisation')
         menu.addAction(self.spec_est_action)
         menu.addSeparator()
