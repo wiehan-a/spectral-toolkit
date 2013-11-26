@@ -14,8 +14,6 @@ from gui.library.libraryview import Library
 import sys, multiprocessing
 import fftw_wrapper.fftw_py as mfftw
 
-CPU_COUNT = multiprocessing.cpu_count()
-
 mfftw.import_wisdom()
  
 qt_app = QApplication(sys.argv)

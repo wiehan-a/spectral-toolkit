@@ -10,6 +10,10 @@ cimport numpy as np
 import windowing
 import fftw_wrapper.fftw_py as mfftw
 
+import sys, multiprocessing
+CPU_COUNT = multiprocessing.cpu_count()
+
+
 def periodogram(signal, window=windowing.apply_blackman_harris, interpolation_factor=1, inplace_windowing=False, disable_normalize=False):
     '''
     Performs the periodogram spectral estimation technique on
@@ -29,7 +33,7 @@ def periodogram(signal, window=windowing.apply_blackman_harris, interpolation_fa
     if window is not None:
         signal = window(signal, inplace=inplace_windowing)
 
-    fft_ = mfftw.real_fft(signal, interpolation_factor * N)
+    fft_ = mfftw.real_fft(signal, interpolation_factor * N, threads = CPU_COUNT)
     fft_ = np.square(fft_)
     fft_ = np.abs(fft_)
     
