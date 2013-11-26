@@ -45,7 +45,7 @@ class Library(QWidget):
         self.table.setModel(self.table_model)
         self.left_vbox.addWidget(self.table)
         verthead = self.table.verticalHeader()
-        verthead.setDefaultSectionSize(verthead.fontMetrics().height()+4)
+        verthead.setDefaultSectionSize(verthead.fontMetrics().height() + 4)
          
         self.table.horizontalHeader().setStretchLastSection(True)
         self.table.resizeColumnsToContents()
@@ -154,8 +154,10 @@ class Library(QWidget):
                 raise TimeMismatchException
             
             print f_map
-        else:
+        elif len(files) == 1:
             f_map = {db[files[0]]['component'] : files}
+        else:
+            return None
             
         return f_map
         
@@ -167,7 +169,12 @@ class Library(QWidget):
         files = [self.table_model.filtered_list[r][0] for r in rows]
         
         try:
-            self.validate_selection(files)
+            if not self.validate_selection(files):
+                msgBox = QMessageBox()
+                msgBox.setText("Library is empty.")
+                msgBox.setIcon(QMessageBox.Critical)
+                msgBox.exec_()
+                return
             worker = ShowTDWorker(files)
             worker.show_td()
             self.plots.append(worker)
@@ -198,7 +205,15 @@ class Library(QWidget):
         rows, files = self.get_selected_rows_and_files()
         
         try:
-            self.validate_selection(files)
+            
+            
+            if not self.validate_selection(files):
+                msgBox = QMessageBox()
+                msgBox.setText("Library is empty.")
+                msgBox.setIcon(QMessageBox.Critical)
+                msgBox.exec_()
+                return
+            
             estimation_window = SpectralConf(files, self)
             estimation_window.show()
             estimation_window.closed.connect(self.spec_est_close_slot)
@@ -223,6 +238,12 @@ class Library(QWidget):
         rows, files = self.get_selected_rows_and_files()
         try:
             f_map = self.validate_selection(files, True)
+            if not f_map:
+                msgBox = QMessageBox()
+                msgBox.setText("Library is empty.")
+                msgBox.setIcon(QMessageBox.Critical)
+                msgBox.exec_()
+                return False
             
         except NotContiguousException:
             msgBox = QMessageBox()
