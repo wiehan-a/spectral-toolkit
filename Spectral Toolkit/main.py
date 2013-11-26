@@ -10,17 +10,12 @@ matplotlib.rcParams['backend.qt4'] ='PySide'
 
 from PySide.QtGui import *
 from PySide.QtCore import *
-import sys, os, time
-from gui.downloader.downloader import Downloader
 from gui.library.libraryview import Library
+import sys, multiprocessing
 import fftw_wrapper.fftw_py as mfftw
-import numpy as np
-from data_processing.filter_design import *
-from data_processing.convolution import *
-from data_processing.windowing import *
-from data_processing.multirate import *
-from data_processing.spectral_estimation import *
-from data_processing.sigproc import *
+
+CPU_COUNT = multiprocessing.cpu_count()
+
 mfftw.import_wisdom()
  
 qt_app = QApplication(sys.argv)

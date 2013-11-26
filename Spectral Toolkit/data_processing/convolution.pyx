@@ -4,6 +4,8 @@ Created on Sep 24, 2013
 @author: Wiehan
 '''
 
+from fftw_wrapper.fftw_py import *
+
 import numpy as np
 cimport numpy as np
 
@@ -17,6 +19,7 @@ from cython.parallel cimport prange, parallel
 
 from libc.stdlib cimport abort, malloc, free
 from libc.string cimport memcpy
+
 
 @cython.boundscheck(False)
 def slow_convolve(np.ndarray[np.float64_t, ndim=1] x not None,
@@ -107,7 +110,7 @@ cdef void mult_dfts(int N, fftw_complex * A, fftw_complex * B) nogil:
         c = B[idxx][0]; d = B[idxx][1]
         B[idxx][0] = a * c - b * d
         B[idxx][1] = b * c + a * d
-
+        
 @cython.cdivision(True)
 @cython.boundscheck(False)
 def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
@@ -116,7 +119,7 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
     
     '''
     Performs the fast convolution of the signals x and h, using the
-    over-lap save method.
+    overlap save method.
     
     The FFTW3 library is invoked and chunks are executed in parallel
     
@@ -137,14 +140,10 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
 
     cdef int out_start = 0
     cdef int start = L - (M - 1) - 1
-    cdef double * input_buffer = < double *> t_buf.data
-    cdef np.ndarray[np.complex128_t, ndim = 1] H_ = np.zeros(shape=(N,), dtype=np.complex128)
-    cdef np.ndarray[np.float64_t, ndim = 1] h_zero_padded = np.zeros(shape=(N,), dtype=np.float64)
-        
-    # create the forward plan. this clobbers h_zero_padded
-    cdef fftw_plan forward_plan = fftw_plan_dft_r2c_1d(N, < double *> h_zero_padded.data, < fftw_complex *> H_.data, FFTW_MEASURE)
-    memcpy(& h_zero_padded.data[0], & h.data[0], M * sizeof(double))
-    fftw_execute(forward_plan)
+    
+    cdef np.ndarray[np.complex128_t, ndim = 1] H_ = real_fft(h, N)
+    
+    print len(H_), N
     
     if out_buffer is None:
         out_buffer = np.zeros(shape=(X,), dtype=np.float64)
@@ -152,71 +151,150 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
     cdef double * output_data = < double *> out_buffer.data
     
     cdef np.ndarray[np.float64_t, ndim = 1] first_block = np.hstack((np.zeros(M - 1), t_buf[0:L]))
-    cdef fftw_complex * outblock = < fftw_complex *> fftw_alloc_complex(N / 2 + 1)
-    cdef double * real_outblock = < double *> fftw_alloc_real(N)
-    cdef fftw_plan backward_plan = fftw_plan_dft_c2r_1d(N, outblock, real_outblock, FFTW_MEASURE)
-    fftw_execute_dft_r2c(forward_plan, < double *> first_block.data, outblock)
-    
-    mult_dfts(N / 2 + 1, < fftw_complex *> H_.data, outblock)
+    cdef np.ndarray[np.complex128_t, ndim = 1] outblock = np.empty(shape=(N / 2 + 1,), dtype=np.complex128)
+    mult_dfts(N / 2 + 1, < fftw_complex *> H_.data, < fftw_complex *> outblock.data)
+    cdef np.ndarray[np.float64_t, ndim = 1] real_outblock = inverse_real_fft(outblock, N)
     
     cdef int idx3 = 0
-    
-
-    
-    
-    
-
-    fftw_execute(backward_plan)
-    
-
     for idx3 in xrange(L):
         output_data[idx3] = real_outblock[M - 1 + idx3] / N
     
     cdef int idx, idx2
-    cdef fftw_complex * local_out_block
-    cdef double * local_real_out_block
+    cdef np.ndarray[np.complex128_t, ndim = 1] local_out_block
+    cdef np.ndarray[np.float64_t, ndim = 1] local_real_out_block
     
-    import time
-    with nogil, parallel(num_threads=8):
-        local_out_block = < fftw_complex *> fftw_alloc_complex(N)
-        local_real_out_block = < double *> fftw_alloc_real(N)  
-        for idx in prange(L - (M - 1), X - (X % L) + 1, L):
-            
-            memcpy(local_real_out_block, & input_buffer[idx], N * sizeof(double))
-            fftw_execute_dft_r2c(forward_plan, local_real_out_block , local_out_block)
-            mult_dfts(N / 2 + 1, < fftw_complex *> H_.data, local_out_block)
-            fftw_execute_dft_c2r(backward_plan, local_out_block, local_real_out_block)
-            for idx2 in xrange(M - 1, N):
-                output_data[idx + idx2] = local_real_out_block[idx2] / N
-                
-        # Destroy thread, local buffers:
-        fftw_free(local_out_block)
-        fftw_free(local_real_out_block)
+#     with nogil, parallel(num_threads=8):  
+    for idx in xrange(L - (M - 1), X - (X % L) + 1, L):
+        local_out_block = real_fft(t_buf[idx:idx + N], N)
+        
+        mult_dfts(N / 2 + 1, < fftw_complex *> H_.data, < fftw_complex *> local_out_block.data)
+        local_real_out_block = inverse_real_fft(local_out_block, N)
+        for idx2 in xrange(M - 1, N):
+            output_data[idx + idx2] = local_real_out_block[idx2] / N
 
     cdef int last = L - (M - 1) + L * int(np.floor((X - (X % L) - (L - (M - 1))) / L))
-    cdef np.ndarray[np.float64_t, ndim = 1] last_block
  
-#     print '***', last, X
     if last < X:
-#         print "I HAPPEN"
-        last_block = np.hstack((t_buf[last:], np.zeros(shape=(N - (X - last),), dtype=np.float64)))
-  
-        local_out_block = < fftw_complex *> fftw_alloc_complex(N / 2 + 1)
-        fftw_execute_dft_r2c(forward_plan, < double *> last_block.data, local_out_block)
-        mult_dfts(N / 2 + 1, < fftw_complex *> H_.data, local_out_block)
-        local_real_out_block = < double *> fftw_alloc_real(N)
-        fftw_execute_dft_c2r(backward_plan, local_out_block, local_real_out_block)
+        local_out_block = real_fft(t_buf[last:], N)
+        mult_dfts(N / 2 + 1, < fftw_complex *> H_.data, < fftw_complex *> local_out_block.data)
+        local_real_out_block = inverse_real_fft(local_out_block, N)
           
         idx2 = 0
         for idx2 in xrange(M - 1, M - 1 + X % L):
             output_data[last + idx2] = local_real_out_block[idx2] / N
           
-        fftw_free(local_out_block)
-        fftw_free(local_real_out_block)
-        
-    fftw_destroy_plan(forward_plan)
-    fftw_destroy_plan(backward_plan)
-    fftw_free(outblock)
-    fftw_free(real_outblock)
     
     return out_buffer[delay:]
+
+# @cython.cdivision(True)
+# @cython.boundscheck(False)
+# def fast_convolve_fftw_w_w(np.ndarray[np.float64_t, ndim=1] x not None,
+#                   np.ndarray[np.float64_t, ndim=1] h not None,
+#                   np.ndarray[np.float64_t, ndim=1] out_buffer=None, delay=0):
+#     
+#     '''
+#     Performs the fast convolution of the signals x and h, using the
+#     overlap save method.
+#     
+#     The FFTW3 library is invoked and chunks are executed in parallel
+#     
+#     y[n] = sum[k = 0:N](x[n-k]*h[k])
+#     
+#     TODO: check for failure conditions and handle them more gracefully
+#     '''
+#     
+#     cdef int M = len(h)
+#     cdef int X = len(x) + delay
+#     
+#     cdef int N = 2 ** int((np.log2(M * 4)))
+#     cdef int L = N - M + 1
+#     
+#     cdef np.ndarray[np.float64_t] t_buf = np.zeros(shape=(X,), dtype=x.dtype)
+#     memcpy(& t_buf.data[0], & x.data[0], len(x) * sizeof(double))
+#     x = None
+# 
+#     cdef int out_start = 0
+#     cdef int start = L - (M - 1) - 1
+#     cdef double * input_buffer = < double *> t_buf.data
+#     cdef np.ndarray[np.complex128_t, ndim = 1] H_ = np.zeros(shape=(N,), dtype=np.complex128)
+#     cdef np.ndarray[np.float64_t, ndim = 1] h_zero_padded = np.zeros(shape=(N,), dtype=np.float64)
+#         
+#     # create the forward plan. this clobbers h_zero_padded
+#     cdef fftw_plan forward_plan = fftw_plan_dft_r2c_1d(N, < double *> h_zero_padded.data, < fftw_complex *> H_.data, FFTW_MEASURE)
+#     memcpy(& h_zero_padded.data[0], & h.data[0], M * sizeof(double))
+#     fftw_execute(forward_plan)
+#     
+#     if out_buffer is None:
+#         out_buffer = np.zeros(shape=(X,), dtype=np.float64)
+#         
+#     cdef double * output_data = < double *> out_buffer.data
+#     
+#     cdef np.ndarray[np.float64_t, ndim = 1] first_block = np.hstack((np.zeros(M - 1), t_buf[0:L]))
+#     cdef fftw_complex * outblock = < fftw_complex *> fftw_alloc_complex(N / 2 + 1)
+#     cdef double * real_outblock = < double *> fftw_alloc_real(N)
+#     cdef fftw_plan backward_plan = fftw_plan_dft_c2r_1d(N, outblock, real_outblock, FFTW_MEASURE)
+#     fftw_execute_dft_r2c(forward_plan, < double *> first_block.data, outblock)
+#     
+#     mult_dfts(N / 2 + 1, < fftw_complex *> H_.data, outblock)
+#     
+#     cdef int idx3 = 0
+#     
+# 
+#     
+#     
+#     
+# 
+#     fftw_execute(backward_plan)
+#     
+# 
+#     for idx3 in xrange(L):
+#         output_data[idx3] = real_outblock[M - 1 + idx3] / N
+#     
+#     cdef int idx, idx2
+#     cdef fftw_complex * local_out_block
+#     cdef double * local_real_out_block
+#     
+#     import time
+#     with nogil, parallel(num_threads=8):
+#         local_out_block = < fftw_complex *> fftw_alloc_complex(N)
+#         local_real_out_block = < double *> fftw_alloc_real(N)  
+#         for idx in prange(L - (M - 1), X - (X % L) + 1, L):
+#             
+#             memcpy(local_real_out_block, & input_buffer[idx], N * sizeof(double))
+#             fftw_execute_dft_r2c(forward_plan, local_real_out_block , local_out_block)
+#             mult_dfts(N / 2 + 1, < fftw_complex *> H_.data, local_out_block)
+#             fftw_execute_dft_c2r(backward_plan, local_out_block, local_real_out_block)
+#             for idx2 in xrange(M - 1, N):
+#                 output_data[idx + idx2] = local_real_out_block[idx2] / N
+#                 
+#         # Destroy thread, local buffers:
+#         fftw_free(local_out_block)
+#         fftw_free(local_real_out_block)
+# 
+#     cdef int last = L - (M - 1) + L * int(np.floor((X - (X % L) - (L - (M - 1))) / L))
+#     cdef np.ndarray[np.float64_t, ndim = 1] last_block
+#  
+# #     print '***', last, X
+#     if last < X:
+# #         print "I HAPPEN"
+#         last_block = np.hstack((t_buf[last:], np.zeros(shape=(N - (X - last),), dtype=np.float64)))
+#   
+#         local_out_block = < fftw_complex *> fftw_alloc_complex(N / 2 + 1)
+#         fftw_execute_dft_r2c(forward_plan, < double *> last_block.data, local_out_block)
+#         mult_dfts(N / 2 + 1, < fftw_complex *> H_.data, local_out_block)
+#         local_real_out_block = < double *> fftw_alloc_real(N)
+#         fftw_execute_dft_c2r(backward_plan, local_out_block, local_real_out_block)
+#           
+#         idx2 = 0
+#         for idx2 in xrange(M - 1, M - 1 + X % L):
+#             output_data[last + idx2] = local_real_out_block[idx2] / N
+#           
+#         fftw_free(local_out_block)
+#         fftw_free(local_real_out_block)
+#         
+#     fftw_destroy_plan(forward_plan)
+#     fftw_destroy_plan(backward_plan)
+#     fftw_free(outblock)
+#     fftw_free(real_outblock)
+#     
+#     return out_buffer[delay:]
