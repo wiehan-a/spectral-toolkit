@@ -72,7 +72,7 @@ class Library(QWidget):
         
     @Slot(QPoint)
     def tableContextMenu(self, point):
-        menu = QMenu()
+        menu = QMenu(self)
         self.display_td_action = QAction('Display time domain', self)
         self.display_td_action.triggered.connect(self.display_td_slot)
         

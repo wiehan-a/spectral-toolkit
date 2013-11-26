@@ -108,6 +108,12 @@ class SpectralConf(QWidget):
         self.preprocessing_worker.moveToThread(self.preprocess_thread)
         self.preprocess_thread.started.connect(self.preprocessing_worker.do_processing)
         self.preprocess_thread.start()
+        self.preprocessing_worker.done.connect(self.preprocess_thread.quit)
+        self.preprocess_thread.finished.connect(self.preprocess_thread.deleteLater)
+        
+    @Slot()
+    def test(self):
+        print "TTT"
         
     @Slot(np.ndarray, float)
     def preprocessing_done_slot(self, signal, new_sampling_rate):
@@ -186,6 +192,8 @@ class SpectralConf(QWidget):
             self.pd_worker.done.connect(self.pd_done_slot)
             self.pd_thread.started.connect(self.pd_worker.do_processing)
             self.pd_thread.start()
+            self.pd_worker.done.connect(self.pd_thread.quit)
+            self.pd_thread.finished.connect(self.pd_thread.deleteLater)
         
     @Slot(np.ndarray, np.ndarray, np.ndarray)
     def pd_done_slot(self, sig, x_snr, snr):
@@ -220,6 +228,8 @@ class SpectralConf(QWidget):
         self.process_thread = QThread()
         self.processing_worker.moveToThread(self.process_thread)
         self.process_thread.started.connect(self.processing_worker.do_processing)
+        self.processing_worker.done.connect(self.process_thread.quit)
+        self.process_thread.finished.connect(self.process_thread.deleteLater)
         self.process_thread.start()
         
         self.progress_header_label.setText('<h4>Performing spectral analysis</h4>')
@@ -236,8 +246,12 @@ class SpectralConf(QWidget):
         
     def closeEvent(self, *args, **kwargs):
         try:
-            self.process_thread.terminate()
-            self.preprocess_thread.terminate()
+            self.process_thread.stop()
+            self.process_thread.wait()
+            self.preprocess_thread.stop()
+            self.preprocess_thread.wait()
+            self.pd_thread.stop()
+            self.pd_thread.wait()
         except AttributeError:
             pass
         self.closed.emit(self)
