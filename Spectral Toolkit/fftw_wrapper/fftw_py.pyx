@@ -30,7 +30,7 @@ def real_fft(np.ndarray[np.float64_t, ndim=1] x, N, threads=1):
     #zero pad and copy buffer
     x = np.ascontiguousarray(np.hstack((x, np.zeros(N - len(x)))))
     
-    cdef fftw_plan forward_plan = fftw_plan_dft_r2c_1d(N, < double *> x.data, < fftw_complex *> out_buffer.data, FFTW_MEASURE)
+    cdef fftw_plan forward_plan = fftw_plan_dft_r2c_1d(N, < double *> x.data, < fftw_complex *> out_buffer.data, FFTW_ESTIMATE)
     fftw_execute(forward_plan)
     fftw_destroy_plan(forward_plan)
     return out_buffer
@@ -47,10 +47,10 @@ def inverse_real_fft(np.ndarray[np.complex128_t, ndim=1] x, N, threads=1):
     
     cdef np.ndarray[np.float64_t] out_buffer = np.empty(shape=(N), dtype=np.float64)
     
-    cdef fftw_plan forward_plan = fftw_plan_dft_c2r_1d(N, < fftw_complex *> x.data, < double *> out_buffer.data, FFTW_MEASURE)
+    cdef fftw_plan forward_plan = fftw_plan_dft_c2r_1d(N, < fftw_complex *> x.data, < double *> out_buffer.data, FFTW_ESTIMATE)
     fftw_execute(forward_plan)
     fftw_destroy_plan(forward_plan)
-    return out_buffer/N
+    return out_buffer
 
 cdef real_fft_c(np.ndarray[np.float64_t, ndim=1] x, N, threads=1):
     '''
@@ -87,4 +87,4 @@ cdef inverse_real_fft_c(np.ndarray[np.complex128_t, ndim=1] x, N, threads=1):
     cdef fftw_plan forward_plan = fftw_plan_dft_c2r_1d(N, < fftw_complex *> x.data, < double *> out_buffer.data, FFTW_MEASURE)
     fftw_execute(forward_plan)
     fftw_destroy_plan(forward_plan)
-    return out_buffer/N
+    return out_buffer
