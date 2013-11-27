@@ -15,6 +15,8 @@ import matplotlib.pyplot as plt
 transition_band = 0.07
 attenuation = 120
 
+max_chunk_size = 10800000
+
 class NotEnoughSamplesException(Exception):
     pass
 
@@ -42,14 +44,23 @@ def decimate(signal, factor, previous_samples=None):
     if len(filter) >= len(signal):
         raise NotEnoughSamplesException('Filter length exceeds signal length, try relaxing constraints')
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
+    decimated = np.zeros(shape=(0,), dtype=np.float64)
     
-    # signal = np.convolve(signal, filter)
-    signal = convolution.fast_convolve_fftw_w(signal, filter, delay=delay)
-#     print len(signal)
+    offset = 0
+    dec_offset = 0
     
-    decimated = np.zeros(shape=(np.ceil(len(signal) / factor),), dtype=np.float64)
-    print len(decimated), len(signal[::factor])
-    decimated[:] = np.ascontiguousarray(np.copy(signal[::factor]))
+    prev_block = None
+    while offset < len(signal):
+        print "chunk"
+        chunk = signal[offset : offset + max_chunk_size]
+        filtered = convolution.fast_convolve_fftw_w(chunk, filter, delay=delay, prev_block=prev_block)
+        
+        offset += max_chunk_size
+        prev_block = chunk[1 - len(filter):]
+        decimated = np.ascontiguousarray(np.hstack((decimated, filtered[dec_offset::factor])))
+        dec_offset = (dec_offset + 1) % factor
+    
+    
     
     return decimated
         
