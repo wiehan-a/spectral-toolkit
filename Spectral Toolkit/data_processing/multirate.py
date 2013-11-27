@@ -18,7 +18,7 @@ attenuation = 120
 class NotEnoughSamplesException(Exception):
     pass
 
-def decimate(signal, factor):
+def decimate(signal, factor, previous_samples=None):
     '''
     Decimate the signal by the integer factor provided.
     
