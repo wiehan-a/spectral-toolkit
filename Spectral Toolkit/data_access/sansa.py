@@ -10,6 +10,7 @@ import utils, time, urllib2, urllib, datetime, os, zlib, struct
 from config import *
 from PySide.QtCore import *
 import numpy as np
+from file_buffer import FileBuffer
 
 SUPPORT_PARTIAL_PROGRESS_REPORTING = False
 SANSA_URL = 'http://geomagnet.ee.sun.ac.za/dbreadusec.php'
@@ -31,8 +32,8 @@ def build_request_string(params):
 def calculate_size(params):
     return (params['end_date'] - params['start_date']).total_seconds()
 
-def make_file_name(params, comp):
-    return config_db['data_folder'] + SANSA_LOCAL_STORAGE_PATH + '{:%Y.%m.%d.%H.%M.%S}'.format(params['start_date']) + '.' + '{:%Y.%m.%d.%H.%M.%S}'.format(params['end_date']) + '.' + comp
+def make_file_name(start, end, comp):
+    return config_db['data_folder'] + SANSA_LOCAL_STORAGE_PATH + '{:%Y.%m.%d.%H.%M.%S}'.format(start) + '.' + '{:%Y.%m.%d.%H.%M.%S}'.format(end) + '.' + comp
 
 class DownloaderWorker(QObject):
     
@@ -100,60 +101,91 @@ class DownloaderWorker(QObject):
                                    'overall_bytes': self.size,
                                    'size_unknown' : True
                                    })
+        
+    def get_intervals(self):
+        start_time = self.params['start_date']
+        end_time = self.params['end_date']
+        
+        sansa_keys = sorted([key for key, value in db.items() 
+                            if value['source'] == 'SANSA' 
+                                and ((value['end_time'] >= start_time and value['start_time'] <= end_time) or
+                                     (value['start_time'] < start_time and value['end_time'] > start_time) or
+                                     (value['end_time'] > end_time and value['start_time'] < end_time))
+                                and value['component'] == "COMP1"],
+                            key=lambda x: db[x]['start_time'])
+        
+        i = [(db[key]['start_time'], db[key]['end_time']) for key in sansa_keys]
+        
+        if len(i) == 0:
+            return [(start_time, end_time)]
+
+        empty_intervals = [(start_time, i[0][0])]
+        for idx in xrange(len(i) - 1):
+            empty_intervals.append((i[idx][1], i[idx + 1][0]))
+        empty_intervals.append((i[-1][1], end_time))
+            
+        empty_intervals = [x for x in empty_intervals if x[0] < x[1]]    
+        return empty_intervals
+        
+        
     
     Slot()
     def start_downloading(self):
         
-        self.size = 0
-        self.real_size = 0
+        intervals = self.get_intervals()
         
-        self.comp_1_file = open(make_file_name(self.params, 'COMP1'), 'wb')
-        self.comp_2_file = open(make_file_name(self.params, 'COMP2'), 'wb')
-        self.comp_3_file = open(make_file_name(self.params, 'COMP3'), 'wb')
-        
-        start_time = self.params['start_date']
-        incr_end_time = start_time + datetime.timedelta(minutes=10)
-        end_time = self.params['end_date']
-        
-        while incr_end_time < end_time:
-            if self.cancel_flag:
-                self.cancel_done.emit()
-                return
-            self.download(start_time, incr_end_time)
-            start_time = incr_end_time + datetime.timedelta(seconds=1)
-            incr_end_time += datetime.timedelta(minutes=10)
-        
-        self.download(start_time, end_time)
-
-        db_add_entry(make_file_name(self.params, 'COMP1'), 'SANSA',
-                     'COMP1', 125, self.params['start_date'], self.params['end_date'])
-        db_add_entry(make_file_name(self.params, 'COMP2'), 'SANSA',
-                     'COMP2', 125, self.params['start_date'], self.params['end_date'])
-        db_add_entry(make_file_name(self.params, 'COMP3'), 'SANSA',
-                     'COMP3', 125, self.params['start_date'], self.params['end_date'])
-        save_db()
-
-        self.comp_1_file.close()
-        self.comp_2_file.close()
-        self.comp_3_file.close()
+        for interval in intervals:
+            
+            self.size = 0
+            self.real_size = 0
+            
+            self.comp_1_file = open(make_file_name(interval[0], interval[1], 'COMP1'), 'wb')
+            self.comp_2_file = open(make_file_name(interval[0], interval[1], 'COMP2'), 'wb')
+            self.comp_3_file = open(make_file_name(interval[0], interval[1], 'COMP3'), 'wb')
+            
+            start_time = interval[0]
+            incr_end_time = start_time + datetime.timedelta(minutes=10)
+            end_time = interval[1]
+            
+            while incr_end_time < end_time:
+                if self.cancel_flag:
+                    self.cancel_done.emit()
+                    return
+                self.download(start_time, incr_end_time)
+                start_time = incr_end_time + datetime.timedelta(seconds=1)
+                incr_end_time += datetime.timedelta(minutes=10)
+            
+            self.download(start_time, end_time)
+    
+            db_add_entry(make_file_name(interval[0], interval[1], 'COMP1'), 'SANSA',
+                         'COMP1', 125, interval[0], interval[1])
+            db_add_entry(make_file_name(interval[0], interval[1], 'COMP2'), 'SANSA',
+                         'COMP2', 125, interval[0], interval[1])
+            db_add_entry(make_file_name(interval[0], interval[1], 'COMP3'), 'SANSA',
+                         'COMP3', 125, interval[0], interval[1])
+            save_db()
+    
+            self.comp_1_file.close()
+            self.comp_2_file.close()
+            self.comp_3_file.close()
                 
         self.done.emit()
         
-def read_in_filenames(filenames):
-    data = np.zeros(0)
-    for filename in filenames:
-        with open(filename, 'rb') as f:
-            buffer = f.read()
-            
-            print len(buffer)
-            print len(buffer) / 4
-            
-            data = np.hstack((data, np.ndarray(shape=(int(len(buffer) / 4)), dtype='float32', buffer=buffer)))
-    
-    return data.astype(np.float64)
+def read_in_filenames(filenames, start_trim=0, end_trim=0):
+    return SansaFileBuffer(filenames, start_trim, end_trim)
 
-if __name__ == '__main__':
-    f = open('../DEBUG.COMP3', 'rb')
-    buffer = f.read()
+class SansaFileBuffer(FileBuffer):
     
-    print np.ndarray(shape=(len(buffer) / 4,), dtype='float32', buffer=buffer)
+    def __init__(self, files, begin_trim=0, end_trim=0):        
+        self.headers = [{'sample_count' : int(os.path.getsize(f) / 4)} for f in files]
+        FileBuffer.__init__(self, files, begin_trim, end_trim)
+        
+    def read_proxy(self, filename, head, offset=0, samples='all'):
+        with open(filename, 'rb') as f:
+            f.seek(offset * 4)
+            buffer = None
+            if samples == "all":
+                buffer = f.read()
+            else:
+                buffer = f.read(4 * samples)
+            return np.ndarray(shape=(int(len(buffer) / 4)), dtype='float32', buffer=buffer)

@@ -51,13 +51,7 @@ def decimate(signal, factor, previous_samples=None):
     
     prev_block = None
     while offset < len(signal):
-#         print "chunk"
         chunk = signal[offset : offset + max_chunk_size]
-#         chunk2 = signal[1][offset : offset + max_chunk_size]
-#         
-#         print "LENS", len(chunk), len(chunk2)
-#         print "AVGS", np.mean(chunk), np.mean(chunk2)
-#         print "MEDS", np.median(chunk), np.median(chunk2)
         
         filtered = convolution.fast_convolve_fftw_w(chunk, filter, delay=delay, prev_block=prev_block)
         

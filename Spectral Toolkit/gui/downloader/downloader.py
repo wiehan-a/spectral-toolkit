@@ -160,18 +160,18 @@ class DownloadDoneWidget(QWidget):
         self.main_vbox.setAlignment(Qt.AlignHCenter)
         self.main_hbox.setStretchFactor(self.main_vbox, 2)
         
-        self.exit_button = QPushButton('Exit')
+        #self.exit_button = QPushButton('Exit')
         self.open_folder_button = QPushButton('Open download folder')
         self.download_more_button = QPushButton('Download more data')
-        self.go_home_button = QPushButton('Spectral Toolkit (Main)')
+        #self.go_home_button = QPushButton('Spectral Toolkit (Main)')
         
         self.main_vbox.addWidget(self.download_more_button)
         self.main_vbox.addWidget(self.open_folder_button)
-        self.main_vbox.addWidget(self.go_home_button)
-        self.main_vbox.addWidget(self.exit_button)
+        #self.main_vbox.addWidget(self.go_home_button)
+        #self.main_vbox.addWidget(self.exit_button)
         
         self.open_folder_button.clicked.connect(self.open_folder_slot)
-        self.exit_button.clicked.connect(sys.exit)
+        #self.exit_button.clicked.connect(sys.exit)
         
     @Slot()
     def open_folder_slot(self):
