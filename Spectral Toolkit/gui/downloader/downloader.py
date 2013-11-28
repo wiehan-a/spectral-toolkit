@@ -86,14 +86,15 @@ class Downloader(QWidget):
         
         idx = self.hosted_widget.sources_combo.currentIndex()
         self.parameters = {}
-        self.hosted_widget.data_selector_widget.annotateParams(self.parameters)
-        
-        if idx != 2:
-            self.parameters['source'] = self.hosted_widget.sources[idx].split(' ')[0]
-            self.switch_in_new_hosted_widget(DownloadConfirmWidget(self.parameters))
+        if self.hosted_widget.validate_self():
+            self.hosted_widget.data_selector_widget.annotateParams(self.parameters)
             
-        if idx == 1:
-            self.download_confirm_slot()
+            if idx != 2:
+                self.parameters['source'] = self.hosted_widget.sources[idx].split(' ')[0]
+                self.switch_in_new_hosted_widget(DownloadConfirmWidget(self.parameters))
+                
+            if idx == 1:
+                self.download_confirm_slot()
     
     @Slot()
     def go_back(self):

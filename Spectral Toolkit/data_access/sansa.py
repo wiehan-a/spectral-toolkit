@@ -64,6 +64,12 @@ class DownloaderWorker(QObject):
         os.remove(self.comp_3_file.name)
     
     def download(self, start_time, end_time):
+        
+        if config_db.has_key("proxies"):
+            proxy_support = urllib2.ProxyHandler(config_db['proxies'])
+            opener = urllib2.build_opener(proxy_support, urllib2.HTTPHandler(debuglevel=1))
+            urllib2.install_opener(opener)
+        
         request = urllib2.Request(build_request_string({'start_date' : start_time,
                                                         'end_date' : end_time}))
         request.add_header('Accept-encoding', 'gzip,deflate')
@@ -142,9 +148,9 @@ def read_in_filenames(filenames):
             print len(buffer)
             print len(buffer) / 4
             
-            data = np.hstack((data, np.ndarray(shape=(int(len(buffer) / 8)), dtype='float64', buffer=buffer)))
+            data = np.hstack((data, np.ndarray(shape=(int(len(buffer) / 4)), dtype='float32', buffer=buffer)))
     
-    return data
+    return data.astype(np.float64)
 
 if __name__ == '__main__':
     f = open('../DEBUG.COMP3', 'rb')

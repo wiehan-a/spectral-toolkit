@@ -22,7 +22,5 @@ app = Library()
 app.run()
 qt_app.exec_()
 
-# import verslag.ar_spectrum_stats_c
- 
 mfftw.export_wisdom()
 sys.exit()

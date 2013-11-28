@@ -85,6 +85,7 @@ class DataSelectorWidgetSANSA(QWidget):
         self.setLayout(self.main_vbox)
             
     def validate_self(self):
+        print "I do validate"
         start_date = self.start_date_dateedit.date()
         end_date = self.end_date_dateedit.date()
         
