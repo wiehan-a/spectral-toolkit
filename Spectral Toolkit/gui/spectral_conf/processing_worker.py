@@ -49,13 +49,13 @@ class ProcessingWorker(QObject):
         
         estimate = None
         if self.params['method'] == 'Periodogram':
-            estimate = spec_est.periodogram(self.signal, interpolation_factor=interpol_factor, window=self.params['window'])
+            estimate = spec_est.periodogram(self.signal[0 : len(self.signal)], interpolation_factor=interpol_factor, window=self.params['window'])
         elif self.params['method'] == 'Bartlett':
             estimate = spec_est.bartlett(self.signal, self.params['parameter'], interpolation_factor=interpol_factor, window=self.params['window'])
         elif self.params['method'] == 'Welch':
             estimate = spec_est.welch(self.signal, self.params['parameter'], interpolation_factor=interpol_factor, window=self.params['window'])
         else:
-            model, sigma = sigproc.auto_regression(self.signal, self.params['parameter'])
+            model, sigma = sigproc.auto_regression(self.signal[0 : len(self.signal)], self.params['parameter'])
             print sigma
             estimate = sigma / spec_est.periodogram(model, window=None, interpolation_factor=interpol_factor * len(self.signal) / len(model), disable_normalize=True)
             model = None
@@ -69,7 +69,7 @@ class ProcessingWorker(QObject):
         
 class PreProcessingWorker(QObject):
     
-    done = Signal(np.ndarray, float)
+    done = Signal(object, float)
     update_message = Signal(str)
     
     def __init__(self, params):
@@ -82,12 +82,13 @@ class PreProcessingWorker(QObject):
         
         sr = db[files[0]]['sampling_rate']
         start_sample = sr * (self.params['start_time'] - db[files[0]]['start_time']).total_seconds()
-        end_sample = sr * (self.params['end_time'] - db[files[0]]['end_time']).total_seconds() - 1
+        end_sample = sr * (self.params['end_time'] - db[files[-1]]['end_time']).total_seconds() - 1
         
-        signal = data_engines[db[files[0]]['source']].read_in_filenames(files)[start_sample : end_sample]
+        signal = data_engines[db[files[0]]['source']].read_in_filenames(files, start_sample, end_sample)
         
         pass_ = 1
         if self.params['fix_discontinuities']:
+            signal = signal[0 : len(signal)]
             self.update_message.emit('Fixing discontinuities (pass ' + str(pass_) + ")")
             p_events = 0
             while pass_ < 20:
@@ -97,7 +98,7 @@ class PreProcessingWorker(QObject):
                 p_events = events
                 pass_ += 1
         
-        signal = signal - np.mean(signal)
+#         signal = signal - np.mean(signal)
         
 #         print len(signal)
         
@@ -126,7 +127,7 @@ class PreProcessingWorker(QObject):
 
         if self.params['do_whitening']:
             self.update_message.emit('Calculating normalisation model...')
-            model,_ = sigproc.auto_regression(signal, self.params['whitening_order'])
+            model, _ = sigproc.auto_regression(signal, self.params['whitening_order'])
             self.update_message.emit('Applying normalisation filter...')
             if self.params['whitening_order'] < 10:
 #                 print len(signal)

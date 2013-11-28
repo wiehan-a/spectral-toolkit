@@ -35,7 +35,7 @@ def read_segy_head(filename):
 
 def read_segy_data(filename, head, offset=0, samples='all'):
     f = open(filename, 'rb')
-    f.seek(head['header_bytes'] + offset)
+    f.seek(head['header_bytes'] + offset*4)
     
     # Note: this assumes little endianness
     i = head['data_form']
@@ -43,6 +43,7 @@ def read_segy_data(filename, head, offset=0, samples='all'):
     if samples == 'all':
         data = np.ndarray(shape=(head['sample_count'] - offset,), dtype='i4', buffer=f.read())
     else:
+        samples = int(samples)
         data = np.ndarray(shape=(samples,), dtype='i4', buffer=f.read(samples * 4))
     
     f.close()
@@ -54,13 +55,16 @@ def read_segy_data(filename, head, offset=0, samples='all'):
  
     return np.array(data)
 
-def read_in_segy(files):
-    return SegyFileBuffer(files).load_all_files()
+def read_in_segy(files, begin_trim=0, end_trim=0):
+    return SegyFileBuffer(files, begin_trim, end_trim)
 
 class SegyFileBuffer:
     
-    def __init__(self, files):
+    def __init__(self, files, begin_trim=0, end_trim=0):
         self.files = files
+        self.begin_trim = int(begin_trim)
+        self.end_trim = int(end_trim)
+        
         self.headers = [read_segy_head(f) for f in files]
         self.sample_counts = map(lambda x: x['sample_count'], self.headers)
         self.buffer_size = reduce(lambda x, y: x + y, self.sample_counts)
@@ -71,11 +75,11 @@ class SegyFileBuffer:
         self.seek(0)
         
     def __len__(self):
-        return self.buffer_size
+        return self.buffer_size - (self.begin_trim + self.end_trim)
     
     def __getitem__(self, key):
         if isinstance(key, slice) :
-            self.seek(key.start)
+            self.seek(key.start + self.begin_trim)
             return self.read(key.stop - key.start)
         
     def seek(self, sample):
@@ -98,32 +102,29 @@ class SegyFileBuffer:
             return None
         
         samples = min(samples, self.buffer_size - self.cur_sample)
-        data = np.empty(shape=(samples,), dtype=np.float64)
+        data = np.zeros(shape=(samples,), dtype=np.float64)
         samples_remaining = samples
         foffset = self.offset_in_file
         offset = 0
         f = self.cur_file
         
         while samples_remaining > 0:
-            if foffset != 0:
-                bs = self.headers[f]['sample_count'] - foffset
-                if bs > samples:
-                    bs = samples
-                
-                data[offset : offset + bs] = read_segy_data(self.files[f], self.headers[f], foffset, bs)
-                offset += bs
+            #
+            
+            diff_in_file = self.headers[f]['sample_count'] - foffset
+            #print f, offset, diff_in_file, samples_remaining, self.headers[f]['sample_count'], foffset
+            if diff_in_file <= samples_remaining:
+                print "file", f, "; sample", foffset, "to", diff_in_file+foffset, "in buffer", offset, 'to', offset + diff_in_file
+                data[offset : offset + diff_in_file] = read_segy_data(self.files[f], self.headers[f], offset=foffset, samples=diff_in_file)
+                samples_remaining -= diff_in_file
+                f += 1
                 foffset = 0
-                samples_remaining -= bs
-            elif samples_remaining <= self.headers[f]['sample_count']:
-                data[offset:] = read_segy_data(self.files[f], self.headers[f], 0, samples_remaining)
+                offset += diff_in_file
+            else: #diff_in_file >= samples_remaining 
+                print "file", f, "; sample", foffset, "to", samples_remaining+foffset, "in buffer", offset, 'to', offset + samples_remaining
+                data[offset : offset + samples_remaining] = read_segy_data(self.files[f], self.headers[f], offset=foffset, samples=samples_remaining)
                 samples_remaining = 0
-            else:
-                bs = self.headers[f]['sample_count']
-                data[offset : offset + bs] = read_segy_data(self.files[f], self.headers[f], 0, 'all')
-                offset += bs
-                samples_remaining -= bs
-                
-            f += 1            
+         
         
         return data
         

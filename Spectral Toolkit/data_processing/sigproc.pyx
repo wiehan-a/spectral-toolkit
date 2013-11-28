@@ -17,7 +17,7 @@ import fftw_wrapper.fftw_py as mfftw
 from libc.string cimport memcpy
 
 @cython.boundscheck(False)
-def auto_correlation(np.ndarray[dtype=np.float64_t] signal, maximum_lag=3):
+def auto_correlation(signal, maximum_lag=3):
     '''
     Estimates the autocorrelation sequence Rxx[n] for n=0,1..,maximum_lag
     '''
@@ -27,6 +27,7 @@ def auto_correlation(np.ndarray[dtype=np.float64_t] signal, maximum_lag=3):
     for m in xrange(len(estimate)):
         sl1 = signal[0:N + 1 - m]
         sl2 = signal[m:N + 1]
+        print len(sl1), len(sl2)
         estimate[m] = np.dot(sl1, sl2)
     
     return estimate / (2 * N + 1)
@@ -59,7 +60,7 @@ def auto_correlation_fft(np.ndarray[dtype=np.float64_t] signal, maximum_lag=3):
     working_space = None
     abs_squared(int(len_working_space / 2 + 1), < fftw_complex *> & DFT.data[0])
     
-    working_space = mfftw.inverse_real_fft(DFT, len_working_space) / (N + 1)
+    working_space = mfftw.inverse_real_fft(DFT, len_working_space) / (N + 1) / (N + 1)
 
     cdef int idx
     for idx in xrange(maximum_lag + 1):
@@ -109,7 +110,7 @@ def levinson_durbin_recursion(np.ndarray[dtype=np.float64_t] R):
 @cython.boundscheck(False)
 def auto_regression(signal, order=3):
     corr_func = auto_correlation_fft
-    if order < 3:
+    if order < 10:
         corr_func = auto_correlation
     R = corr_func(signal, order)
     a = levinson_durbin_recursion(R)

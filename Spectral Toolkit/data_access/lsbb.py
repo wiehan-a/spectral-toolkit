@@ -211,8 +211,8 @@ def get_single_file_size(params):
 def calculate_size(params):
     return (get_number_of_files(params)) * get_single_file_size(params)
 
-def read_in_filenames(filenames):
-    return segy.read_in_segy(filenames)
+def read_in_filenames(filenames, begin_trim=0, end_trim=0):
+    return segy.read_in_segy(filenames, begin_trim, end_trim)
 
 if __name__ == '__main__':
     print get_local_file_name(datetime.date.today(), 'CGE', {'sampling_rate' : 125})
