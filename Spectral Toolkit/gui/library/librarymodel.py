@@ -24,6 +24,7 @@ class LibraryModel(QAbstractTableModel):
     @Slot()
     def refreshModel(self):
         self.beginResetModel()
+        reload_db()
         get_date = lambda key : db[key]['start_time']
         self.db_flat_view = []
         self.filtered_list = self.db_flat_view
