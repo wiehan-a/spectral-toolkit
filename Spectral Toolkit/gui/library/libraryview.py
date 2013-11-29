@@ -30,6 +30,7 @@ class Library(QWidget):
 
         QWidget.__init__(self)
         self.setWindowTitle('Spectral Toolkit (Data library)')
+        self.setMinimumWidth(1200)
         self.setMinimumWidth(800)
         
         self.main_hbox = QHBoxLayout(self)

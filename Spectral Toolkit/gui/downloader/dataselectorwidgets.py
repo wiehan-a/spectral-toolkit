@@ -16,9 +16,8 @@ class DataSelectorWidget(QWidget):
     def __init__(self):
         QWidget.__init__(self)
         
-        self.data_selector_widgets = {'LSBB (France)' : DataSelectorWidgetLSBB(),
-                                      'SANSA (Hermanus)' : DataSelectorWidgetSANSA(),
-                                      'Load from file' : DataSelectorWidgetFile()}
+        self.data_selector_widgets = {'SANSA (Hermanus)' : DataSelectorWidgetSANSA(),
+                                      'LSBB (France)' : DataSelectorWidgetLSBB()}
         
         self.main_vbox = QVBoxLayout(self)
         self.main_vbox.setAlignment(Qt.AlignTop)
@@ -30,7 +29,7 @@ class DataSelectorWidget(QWidget):
         self.originchooser_hbox.addWidget(origin_label)    
         self.sources_combo = QComboBox(self)
         self.sources_combo.currentIndexChanged.connect(self.origin_changed_slot)
-        self.sources = ['LSBB (France)', 'SANSA (Hermanus)']
+        self.sources = ['SANSA (Hermanus)', 'LSBB (France)']
         self.sources_combo.addItems(self.sources)
         self.originchooser_hbox.addWidget(self.sources_combo)
         

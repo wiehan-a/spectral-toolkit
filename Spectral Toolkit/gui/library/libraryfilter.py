@@ -50,8 +50,9 @@ class LibraryFilterWidget(QWidget):
                             "start_time": datetime.datetime.now()
                         }
         
-        for key, value in prototype.iteritems():
-            self.filter_widgets.append(FilterItemWidget(key, value))
+        for key in librarymodel.headers_db:
+            if librarymodel.headers_filter_map[key]:
+                self.filter_widgets.append(FilterItemWidget(key, prototype[key]))
 
             
         for fw in self.filter_widgets:

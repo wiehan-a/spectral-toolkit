@@ -65,6 +65,8 @@ class DownloaderWorker(QObject):
         os.remove(self.comp_3_file.name)
     
     def download(self, start_time, end_time):
+        print start_time, end_time
+        num_samples = int(125 * (end_time - start_time).total_seconds())
         
         if config_db.has_key("proxies"):
             proxy_support = urllib2.ProxyHandler(config_db['proxies'])
@@ -84,14 +86,53 @@ class DownloaderWorker(QObject):
             compressed = len(buffer)
             self.real_size += compressed
             buffer = d.decompress(buffer)
-            print len(buffer) / compressed
+            print "LB", len(buffer) / compressed
             
-            for x in buffer.split('<br>'):
-                line = x.split(';')
-                if len(line) > 1:
-                    self.comp_1_file.write(struct.pack('f', float(line[3])))
-                    self.comp_2_file.write(struct.pack('f', float(line[4])))
-                    self.comp_3_file.write(struct.pack('f', float(line[5])))            
+            lines = buffer.split('<br>')
+            if len(buffer) == 0 or len(lines) == 0:
+                print "********* No data for block: ", num_samples, "samples missed"
+                zeros = np.zeros(shape=(num_samples,), dtype=np.float32)
+                zeros.tofile(self.comp_1_file, format='f')
+                zeros.tofile(self.comp_2_file, format='f')
+                zeros.tofile(self.comp_3_file, format='f')
+                
+                self.missing_intervals.append([self.sample_count, self.sample_count + num_samples])
+                self.sample_count += num_samples
+            
+            else:
+                last_time = start_time
+                for x in lines:
+                    line = x.split(';')
+                    if len(line) > 1:
+                        time_ = datetime.datetime.strptime(line[1], "%Y-%m-%d %H:%M:%S").replace(microsecond=int(line[2]))
+                        interval = time_ - last_time
+                        if interval > datetime.timedelta(microseconds=8100):
+                            samples_missed = np.round(interval.total_seconds() / (1.0 / 125))
+                            print "****** A-- we missed some samples ===", samples_missed, last_time, time_
+                            zeros = np.zeros(shape=(samples_missed - 1,), dtype=np.float32)
+                            zeros.tofile(self.comp_1_file, format='f')
+                            zeros.tofile(self.comp_2_file, format='f')
+                            zeros.tofile(self.comp_3_file, format='f')
+                            self.missing_intervals.append([self.sample_count, self.sample_count + samples_missed])
+                            self.sample_count += samples_missed
+                        
+                        last_time = time_
+                        self.comp_1_file.write(struct.pack('f', float(line[3])))
+                        self.comp_2_file.write(struct.pack('f', float(line[4])))
+                        self.comp_3_file.write(struct.pack('f', float(line[5])))
+                        self.sample_count += 1
+                        
+                interval = end_time - last_time
+                if interval > datetime.timedelta(microseconds=16000):
+                    samples_missed = np.round(interval.total_seconds() / (1.0 / 125)) - 1
+                    print "****** B-- we missed some samples ===", samples_missed
+                    zeros = np.zeros(shape=(samples_missed,), dtype=np.float32)
+                    zeros.tofile(self.comp_1_file, format='f')
+                    zeros.tofile(self.comp_2_file, format='f')
+                    zeros.tofile(self.comp_3_file, format='f')
+                    self.missing_intervals.append([self.sample_count, self.sample_count + samples_missed])
+                    self.sample_count += samples_missed
+                            
             
         self.size += 10 * 60
         
@@ -117,31 +158,46 @@ class DownloaderWorker(QObject):
         i = [(db[key]['start_time'], db[key]['end_time']) for key in sansa_keys]
         
         if len(i) == 0:
-            return [(start_time, end_time)]
+            return [[start_time, end_time]]
 
-        empty_intervals = [(start_time, i[0][0])]
+        empty_intervals = [[start_time, i[0][0]]]
         for idx in xrange(len(i) - 1):
-            empty_intervals.append((i[idx][1], i[idx + 1][0]))
-        empty_intervals.append((i[-1][1], end_time))
+            empty_intervals.append([i[idx][1], i[idx + 1][0]])
+        empty_intervals.append([i[-1][1], end_time])
             
         empty_intervals = [x for x in empty_intervals if x[0] < x[1]]    
         return empty_intervals
         
+    def merge_missing_intervals(self):
+        idx = len(self.missing_intervals) - 1
         
+        while idx > 0:
+            if self.missing_intervals[idx - 1][1] == self.missing_intervals[idx][0]:
+                self.missing_intervals[idx - 1][1] = self.missing_intervals[idx][1]
+                del self.missing_intervals[idx]
+
+            idx -= 1
     
     Slot()
     def start_downloading(self):
         
         intervals = self.get_intervals()
         
+        self.size = 0
+        self.real_size = 0
+        
         for interval in intervals:
             
-            self.size = 0
-            self.real_size = 0
+            self.sample_count = 0
+            self.missing_intervals = []
             
-            self.comp_1_file = open(make_file_name(interval[0], interval[1], 'COMP1'), 'wb')
-            self.comp_2_file = open(make_file_name(interval[0], interval[1], 'COMP2'), 'wb')
-            self.comp_3_file = open(make_file_name(interval[0], interval[1], 'COMP3'), 'wb')
+            n1 = make_file_name(interval[0], interval[1], 'COMP1')
+            n2 = make_file_name(interval[0], interval[1], 'COMP2')
+            n3 = make_file_name(interval[0], interval[1], 'COMP3')
+            
+            self.comp_1_file = open(n1, 'wb')
+            self.comp_2_file = open(n2, 'wb')
+            self.comp_3_file = open(n3, 'wb')
             
             start_time = interval[0]
             incr_end_time = start_time + datetime.timedelta(minutes=10)
@@ -155,14 +211,24 @@ class DownloaderWorker(QObject):
                 start_time = incr_end_time + datetime.timedelta(seconds=1)
                 incr_end_time += datetime.timedelta(minutes=10)
             
-            self.download(start_time, end_time)
-    
-            db_add_entry(make_file_name(interval[0], interval[1], 'COMP1'), 'SANSA',
-                         'COMP1', 125, interval[0], interval[1])
-            db_add_entry(make_file_name(interval[0], interval[1], 'COMP2'), 'SANSA',
-                         'COMP2', 125, interval[0], interval[1])
-            db_add_entry(make_file_name(interval[0], interval[1], 'COMP3'), 'SANSA',
-                         'COMP3', 125, interval[0], interval[1])
+            if start_time < end_time:
+                self.download(start_time, end_time)
+            
+            print self.missing_intervals
+            self.merge_missing_intervals()
+            if len(self.missing_intervals) > 0:
+                with open(n1 + ".annot", "w") as f:
+                    f.write(json.dumps(self.missing_intervals))
+                    
+                db_add_entry(n1, 'SANSA', 'COMP1', 125, interval[0], interval[1], True, n1 + ".annot")
+                db_add_entry(n2, 'SANSA', 'COMP2', 125, interval[0], interval[1], True, n1 + ".annot")
+                db_add_entry(n3, 'SANSA', 'COMP3', 125, interval[0], interval[1], True, n1 + ".annot")
+            else:
+                db_add_entry(n1, 'SANSA', 'COMP1', 125, interval[0], interval[1], False)
+                db_add_entry(n2, 'SANSA', 'COMP2', 125, interval[0], interval[1], False)
+                db_add_entry(n3, 'SANSA', 'COMP3', 125, interval[0], interval[1], False)
+                
+            
             save_db()
     
             self.comp_1_file.close()

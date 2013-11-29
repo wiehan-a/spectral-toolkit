@@ -73,14 +73,21 @@ def save_db():
     with open(DB_FILENAME, 'w') as f:
        f.write(json.dumps(db, sort_keys=True, indent=4, separators=(',', ': '), cls=DateTimeJSONEncoder))
        
-def db_add_entry(filename, source, component, sampling_rate, start_time, end_time):
+def db_add_entry(filename, source, component, sampling_rate, start_time, end_time, missing_samples=False, missing_annotations=None):
     db[filename] = {
                         'source' : source,
                         'component' : component,
                         'start_time' : start_time,
                         'end_time' : end_time,
-                        'sampling_rate' : sampling_rate
+                        'sampling_rate' : sampling_rate,
+                        'missing_samples' : missing_samples,
                        }
+    if missing_annotations is not None:
+        db[filename]['annotations_file'] = missing_annotations
+        
+def load_annotations(filename):
+   with open(db[filename]['annotations_file']) as f:
+        return json.loads(f.read())
     
 def db_get_entry_count():
     return len(db)
@@ -90,11 +97,24 @@ def db_load_data(filenames):
 
 def db_discard_data(filenames):
     pass
-    
+
+def count_missing_samples(filename):
+    annotations = load_annotations(filename)
+    missing = 0
+    for interval in annotations:
+        missing += interval[1] - interval[0]
+    return int(missing)
 
 try:
     with open(DB_FILENAME) as f:
         db = json.loads(f.read(), cls=DateTimeJSONDecoder)
+        
+        for key, value in db.items():
+            if value.has_key('missing_samples') and value['missing_samples']:
+                value['num_missing_samples'] = count_missing_samples(key)
+            else: 
+                value['num_missing_samples'] = 0
+                
 except IOError:
     initialize_db()
 except ValueError:

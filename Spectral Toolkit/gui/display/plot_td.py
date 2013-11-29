@@ -34,10 +34,12 @@ class ShowTDWorker(QObject):
         
         signal = data_engines[db[files[0]]['source']].read_in_filenames(files)
         signal = display_friendly.downsample_for_display(signal)
+        signal = signal[0 : len(signal)]
         
         td = (db[files[-1]]['end_time'] - db[files[0]]['start_time']) / len(signal)
          
         x_axis = [db[files[0]]['start_time'] + idx * td for idx in xrange(len(signal))]
+        print len(x_axis), len(signal)
         self.plotter = Plotter(x_axis, signal)
         self.plotter.closed.connect(self.plotter_close)
         

@@ -8,9 +8,11 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 from config import *
 
-headers_db = ['start_time', 'end_time', 'source', 'component', 'sampling_rate']
+headers_db = ['start_time', 'end_time', 'source', 'component', 'sampling_rate', 'num_missing_samples']
+headers_filter = [True, True, True, True, True, False]
+headers_filter_map = {headers_db[x] : headers_filter[x] for x in xrange(len(headers_db))}
 headers_db_indices = {headers_db[x] : (x + 1)  for x in xrange(len(headers_db))}
-headers_pretty = ['Start time', 'End time', 'Data source', 'Component', 'Sampling rate']
+headers_pretty = ['Start', 'End', 'Source', 'Component', 'Sampling rate', '# Missing']
 headers_db_pretty_map = {headers_db[x] : headers_pretty[x] for x in xrange(len(headers_db))}
 
 class LibraryModel(QAbstractTableModel):
@@ -56,7 +58,7 @@ class LibraryModel(QAbstractTableModel):
         return len(self.filtered_list)
     
     def columnCount(self, parent=QModelIndex()):
-        return 5
+        return 6
     
     def data(self, index, role=Qt.DisplayRole):
         if role == Qt.DisplayRole:
@@ -71,7 +73,3 @@ class LibraryModel(QAbstractTableModel):
                 return headers_pretty[section]
 
         return None
-#     def removeRows(self, *args, **kwargs):
-#         self.beginRemoveColumns()
-#         return QAbstractTableModel.removeRows(self, *args, **kwargs)
-#         self.endRemoveRows()
