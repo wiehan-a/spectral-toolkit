@@ -123,7 +123,6 @@ except ValueError:
 try:
     with open(CONFIG_FILENAME) as f:
         config_db = json.loads(f.read())
-        print config_db['proxies']
 except IOError:
     initialize_config()
 except ValueError:
