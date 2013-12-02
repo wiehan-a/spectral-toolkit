@@ -4,6 +4,14 @@ Created on Sep 16, 2013
 @author: Wiehan
 '''
 
+import os, ctypes
+if os.name == 'posix':
+    try:
+        x11 = ctypes.cdll.LoadLibrary('libX11.so')
+        x11.XInitThreads()
+    except:
+        print "Warning: failed to XInitThreads()"
+
 import matplotlib
 matplotlib.use('Qt4Agg')
 matplotlib.rcParams['backend.qt4'] ='PySide'
