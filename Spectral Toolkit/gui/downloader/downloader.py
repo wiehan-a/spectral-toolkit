@@ -29,6 +29,13 @@ class Downloader(QWidget):
         self.setWindowTitle('Spectral Toolkit (Downloader)')
         self.setMinimumWidth(500)
         
+        self.setWindowIcon(QIcon('icon.png'))
+        if os.name == 'nt':
+            # This is needed to display the app icon on the taskbar on Windows 7
+            import ctypes
+            myappid = 'MyOrganization.MyGui.1.0.0' # arbitrary string
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+        
         self.main_vbox = QVBoxLayout(self)
         self.main_vbox.setAlignment(Qt.AlignTop)
         self.header_title_label = QLabel()
@@ -242,10 +249,10 @@ class DownloaderWidget(QWidget):
         
     def get_actions(self, parent):
         
-        back = QPushButton('Back')
+        back = QPushButton(app_icons['back'], 'Back')
         back.clicked.connect(parent.go_back)
         
-        cancel = QPushButton('Cancel')
+        cancel = QPushButton(app_icons['cancel'], 'Cancel')
         cancel.clicked.connect(parent.cancel_download_slot)
         # download.clicked.connect(parent.download_confirm_slot)
         

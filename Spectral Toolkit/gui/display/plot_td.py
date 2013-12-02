@@ -12,38 +12,36 @@ from datetime import timedelta
 from PySide.QtCore import QObject, Slot, Signal
 from plot_view import Plotter
 
+import numpy as np
+
 import matplotlib.pyplot as plt
 
-data_engines = {
-                   'SANSA' :  data_access.sansa,
-                   'LSBB' : data_access.lsbb
-               }
+from data_access import data_engines
 
-class ShowTDWorker(QObject):
+class ProcessTDWorker(QObject):
     
-    closed = Signal()
+    done = Signal(np.ndarray, np.ndarray)
     
-    def __init__(self, files):
+    def __init__(self, files, parent):
         QObject.__init__(self)
         self.files = files
+        self.parent_ = parent
     
     @Slot()
-    def show_td(self):
+    def process_td(self):
         files = self.files
         files = sorted(files, key=lambda f: db[f]['start_time'])
         
+        self.parent_.statusBar().showMessage('Loading data...')
         signal = data_engines[db[files[0]]['source']].read_in_filenames(files)
+        self.parent_.statusBar().showMessage('Downsampling data for display...')
         signal = display_friendly.downsample_for_display(signal)
+        self.parent_.statusBar().showMessage('Plotting...')
         signal = signal[0 : len(signal)]
         
         td = (db[files[-1]]['end_time'] - db[files[0]]['start_time']) / len(signal)
          
         x_axis = [db[files[0]]['start_time'] + idx * td for idx in xrange(len(signal))]
-        print len(x_axis), len(signal)
-        self.plotter = Plotter(x_axis, signal)
-        self.plotter.closed.connect(self.plotter_close)
         
-    @Slot()
-    def plotter_close(self):
-        self.plotter = None
-        self.closed.emit()
+        self.done.emit(x_axis, signal)
+        

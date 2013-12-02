@@ -10,14 +10,16 @@ matplotlib.rcParams['backend.qt4'] ='PySide'
 
 from PySide.QtGui import *
 from PySide.QtCore import *
-from gui.library.libraryview import Library
 import sys, multiprocessing
 import fftw_wrapper.fftw_py as mfftw
 
+qt_app = QApplication(sys.argv)
+
+from gui.library.libraryview import Library
+
 mfftw.import_wisdom()
  
-qt_app = QApplication(sys.argv)
-                                
+     
 app = Library()
 app.run()
 qt_app.exec_()

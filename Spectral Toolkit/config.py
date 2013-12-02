@@ -45,7 +45,7 @@ CONFIG_FILENAME = 'config.json'
 db_default = {}
 
 config_db_default = {
-                     'data_folder' : 'Downloaded Data'
+                        'data_folder' : 'Downloaded Data'
                     }
 
 config_db = {}
@@ -70,25 +70,39 @@ def save_config():
        f.write(json.dumps(config_db, sort_keys=True, indent=4, separators=(',', ': ')))
        
 def save_db():
+    print "saving db"
+    global db
+    print id(db)
     with open(DB_FILENAME, 'w') as f:
        f.write(json.dumps(db, sort_keys=True, indent=4, separators=(',', ': '), cls=DateTimeJSONEncoder))
+    print id(db)
+    print "done saving db"
        
 def reload_db():
+    global db
+    db.clear()
     try:
         with open(DB_FILENAME) as f:
-            db = json.loads(f.read(), cls=DateTimeJSONDecoder)
+            
+            db2 = json.loads(f.read(), cls=DateTimeJSONDecoder)
+            db.update(db2)
             
             for key, value in db.items():
                 if value.has_key('missing_samples') and value['missing_samples']:
                     value['num_missing_samples'] = count_missing_samples(key)
                 else: 
                     value['num_missing_samples'] = 0
+                
+                if not value.has_key('tag'):
+                    value['tag'] = ''
+                    
     except IOError:
         initialize_db()
     except ValueError:
         initialize_db()
        
-def db_add_entry(filename, source, component, sampling_rate, start_time, end_time, missing_samples=False, missing_annotations=None):
+def db_add_entry(filename, source, component, sampling_rate, start_time, end_time, missing_samples=False, missing_annotations=None, tag=None):
+    global db
     db[filename] = {
                         'source' : source,
                         'component' : component,
@@ -100,8 +114,12 @@ def db_add_entry(filename, source, component, sampling_rate, start_time, end_tim
     if missing_annotations is not None:
         db[filename]['annotations_file'] = missing_annotations
         
+    if tag is not None:
+        db[filename]['tag'] = tag
+        
 def load_annotations(filename):
-   with open(db[filename]['annotations_file']) as f:
+    global db
+    with open(db[filename]['annotations_file']) as f:
         return json.loads(f.read())
     
 def db_get_entry_count():
@@ -119,6 +137,7 @@ def count_missing_samples(filename):
     for interval in annotations:
         missing += interval[1] - interval[0]
     return int(missing)
+
 
 reload_db()
                 

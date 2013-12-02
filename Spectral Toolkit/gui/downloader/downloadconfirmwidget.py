@@ -6,6 +6,8 @@ Created on Sep 17, 2013
 
 from PySide.QtCore import *
 from PySide.QtGui import *
+from gui.icons import *
+
 import utils
 import data_access.lsbb as lsbb
 import data_access.sansa as sansa
@@ -55,10 +57,10 @@ class DownloadConfirmWidget(QWidget):
     
     def get_actions(self, parent):
         
-        back = QPushButton('Back')
+        back = QPushButton(app_icons['back'], 'Back')
         back.clicked.connect(parent.go_back)
         
-        download = QPushButton('Download')
+        download = QPushButton(app_icons['download'], 'Download')
         download.clicked.connect(parent.download_confirm_slot)
         
         buttons = {'left' : [back],

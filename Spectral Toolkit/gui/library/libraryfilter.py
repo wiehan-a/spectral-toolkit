@@ -7,6 +7,8 @@ Created on Sep 23, 2013
 from PySide.QtCore import *
 from PySide.QtGui import *
 
+from gui.icons import *
+
 import librarymodel
 from config import *
 import operator
@@ -47,7 +49,9 @@ class LibraryFilterWidget(QWidget):
                             "end_time": datetime.datetime.now(),
                             "sampling_rate": 125,
                             "source": "LSBB",
-                            "start_time": datetime.datetime.now()
+                            "start_time": datetime.datetime.now(),
+                            "missing_samples" : 0,
+                            "tag" : ""
                         }
         
         for key in librarymodel.headers_db:
@@ -58,15 +62,15 @@ class LibraryFilterWidget(QWidget):
         for fw in self.filter_widgets:
             self.main_vbox.addLayout(fw)
             
-        self.main_vbox.addStretch()
+        #self.main_vbox.addStretch()
             
         self.action_bar_hbox = QHBoxLayout()
         self.main_vbox.addLayout(self.action_bar_hbox)
-        self.reset_view_button = QPushButton('Reset view')
+        self.reset_view_button = QPushButton(app_icons['cancel'], 'Reset view')
         self.reset_view_button.clicked.connect(self.model.reset_slot)
         self.action_bar_hbox.addWidget(self.reset_view_button)
         self.action_bar_hbox.addStretch()
-        self.filter_button = QPushButton('Apply filter')
+        self.filter_button = QPushButton(app_icons['apply'], 'Apply filter')
         self.filter_button.clicked.connect(self.apply_filter_slot)
         self.action_bar_hbox.addWidget(self.filter_button)
         

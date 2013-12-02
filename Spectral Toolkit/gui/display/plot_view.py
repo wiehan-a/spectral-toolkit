@@ -4,7 +4,7 @@ Created on Oct 3, 2013
 @author: Wiehan
 '''
 
-import sys
+import sys, os
 # import matplotlib
 # matplotlib.use('Qt4Agg')
 # matplotlib.rcParams['backend.qt4']='PySide'
@@ -25,6 +25,13 @@ class Plotter(QWidget):
         QWidget.__init__(self)
         
         self.setWindowTitle('Spectral Toolkit (Figure)')
+        
+        self.setWindowIcon(QIcon('icon.png'))
+        if os.name == 'nt':
+            # This is needed to display the app icon on the taskbar on Windows 7
+            import ctypes
+            myappid = 'MyOrganization.MyGui.1.0.0' # arbitrary string
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         
         self.figure = plt.figure()
         self.canvas = FigureCanvas(self.figure)

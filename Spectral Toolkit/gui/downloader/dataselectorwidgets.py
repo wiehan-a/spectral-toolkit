@@ -7,6 +7,8 @@ Created on Sep 17, 2013
 from PySide.QtCore import *
 from PySide.QtGui import *
 
+from gui.icons import *
+
 from gui.stdateedit import *
 
 class DataSelectorWidget(QWidget):
@@ -51,7 +53,7 @@ class DataSelectorWidget(QWidget):
     
     def get_actions(self, parent):
         
-        action_button = QPushButton('Next')
+        action_button = QPushButton(app_icons['next'], 'Next')
         action_button.clicked.connect(parent.data_select_slot)
         
         buttons = {'left' : [],

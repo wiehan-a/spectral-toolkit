@@ -63,6 +63,7 @@ class DownloaderWorker(QObject):
         os.remove(self.comp_1_file.name)
         self.comp_3_file.close()
         os.remove(self.comp_3_file.name)
+        
     
     def download(self, start_time, end_time):
         print start_time, end_time

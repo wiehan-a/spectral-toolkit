@@ -20,7 +20,7 @@ max_chunk_size = 5800000
 class NotEnoughSamplesException(Exception):
     pass
 
-def decimate(signal, factor, previous_samples=None):
+def decimate(signal, factor, previous_samples=None, transition_band=transition_band, attenuation=attenuation):
     '''
     Decimate the signal by the integer factor provided.
     

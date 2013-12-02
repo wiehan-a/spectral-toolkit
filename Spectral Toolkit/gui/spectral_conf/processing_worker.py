@@ -20,10 +20,7 @@ import data_processing.convolution as convolution
 import data_processing.spectral_estimation as spec_est
 from data_processing.discontinuity_tool import find_discontinuities
 
-data_engines = {
-                   'SANSA' :  data_access.sansa,
-                   'LSBB' : data_access.lsbb
-               }
+from data_access import data_engines
 
 class ProcessingWorker(QObject):
     

@@ -12,6 +12,7 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 import sys, time, os, utils, config, struct
 from gui.stdateedit import *
+from gui.icons import *
 from processing_worker import *
 import numpy as np
 from data_processing import windowing, peak_detection
@@ -37,7 +38,14 @@ class SpectralConf(QWidget):
         self.files = sorted(self.files, key=lambda f: config.db[f]['start_time'])
         
         self.setWindowTitle('Spectral Toolkit (Spectral estimation)')
-        self.setMinimumWidth(500)
+        self.setMinimumWidth(650)
+        
+        self.setWindowIcon(QIcon('icon.png'))
+        if os.name == 'nt':
+            # This is needed to display the app icon on the taskbar on Windows 7
+            import ctypes
+            myappid = 'MyOrganization.MyGui.1.0.0' # arbitrary string
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         
         self.main_vbox = QVBoxLayout(self)
         self.main_vbox.setAlignment(Qt.AlignTop)
@@ -59,11 +67,11 @@ class SpectralConf(QWidget):
          
         self.action_bar_hbox = QHBoxLayout()
         self.main_vbox.addLayout(self.action_bar_hbox)
-        self.cancel_button = QPushButton('Cancel')
+        self.cancel_button = QPushButton(app_icons['cancel'], 'Cancel')
         self.cancel_button.clicked.connect(self.cancel_slot)
         self.action_bar_hbox.addWidget(self.cancel_button)
         self.action_bar_hbox.addStretch()
-        self.next_button = QPushButton('Next')
+        self.next_button = QPushButton(app_icons['next'], 'Next')
         self.next_button.clicked.connect(self.next_slot_domain)
         self.action_bar_hbox.addWidget(self.next_button)
         
@@ -135,18 +143,18 @@ class SpectralConf(QWidget):
         self.signal = None
         self.spectrum = signal
         
-        self.export_python_button = QPushButton("Export to Python/NumPy")
+        self.export_python_button = QPushButton(app_icons['export'], "Export to Python/NumPy")
         self.export_python_button.clicked.connect(self.export_python_spectrum)
-        self.export_matlab_button = QPushButton("Export to MATLAB")
+        self.export_matlab_button = QPushButton(app_icons['export'], "Export to MATLAB")
         self.export_matlab_button.clicked.connect(self.export_matlab_spectrum)
         self.main_vbox.addWidget(self.export_python_button)
         self.main_vbox.addWidget(self.export_matlab_button)
-        self.view_spectrum_button = QPushButton('View spectrum')
+        self.view_spectrum_button = QPushButton(app_icons['graph'], 'View spectrum')
         self.view_spectrum_button.clicked.connect(self.view_spectrum_slot)
         self.main_vbox.addWidget(self.view_spectrum_button)
 #         self.export_spectrum_button = QPushButton('Export spectrum')
 #         self.main_vbox.addWidget(self.view_spectrum_button)
-        self.peak_button = QPushButton('Perform peak detection')
+        self.peak_button = QPushButton(app_icons['estimate'], 'Perform peak detection')
         self.peak_button.clicked.connect(self.peak_detection_slot)
         self.main_vbox.addWidget(self.peak_button)
         
