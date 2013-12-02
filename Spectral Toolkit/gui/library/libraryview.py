@@ -250,6 +250,7 @@ class LibraryCentralWidget(QWidget):
                 return
             
             worker = ProcessTDWorker(files, self.parent())
+            worker.messaging.connect(self.parent().statusBar().showMessage)
             self.workers.append(worker)
             process_td_thread = QThread()
             self.worker_threads.append(process_td_thread)

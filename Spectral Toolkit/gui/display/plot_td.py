@@ -21,6 +21,7 @@ from data_access import data_engines
 class ProcessTDWorker(QObject):
     
     done = Signal(np.ndarray, np.ndarray)
+    messaging = Signal(str)
     
     def __init__(self, files, parent):
         QObject.__init__(self)
@@ -32,11 +33,11 @@ class ProcessTDWorker(QObject):
         files = self.files
         files = sorted(files, key=lambda f: db[f]['start_time'])
         
-        self.parent_.statusBar().showMessage('Loading data...')
+        self.messaging.emit('Loading data...')
         signal = data_engines[db[files[0]]['source']].read_in_filenames(files)
-        self.parent_.statusBar().showMessage('Downsampling data for display...')
+        self.messaging.emit('Downsampling data for display...')
         signal = display_friendly.downsample_for_display(signal)
-        self.parent_.statusBar().showMessage('Plotting...')
+        self.messaging.emit('Plotting...')
         signal = signal[0 : len(signal)]
         
         td = (db[files[-1]]['end_time'] - db[files[0]]['start_time']) / len(signal)
