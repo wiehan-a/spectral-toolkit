@@ -110,7 +110,7 @@ cdef void mult_dfts(int N, fftw_complex * A, fftw_complex * B) nogil:
         B[idxx][0] = a * c - b * d
         B[idxx][1] = b * c + a * d
         
-# @cython.cdivision(True)
+@cython.cdivision(True)
 @cython.boundscheck(False)
 def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
                   np.ndarray[np.float64_t, ndim=1] h not None,
