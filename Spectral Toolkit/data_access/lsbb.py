@@ -76,6 +76,11 @@ class ControlledFTP:
         self.ftp_connection.cwd('/')
         self.ftp_connection.sendcmd('TYPE I')
         filename = get_local_file_name(date, component, params)
+        
+        if os.path.exists(filename):
+            print "skipping this file"
+            return
+        
         self.file = open(filename, 'wb')
         self.ftp_connection.retrbinary('RETR ' + self.get_path(date, component), self.download_persist_callback, 1024 * 1024 / 4)
         

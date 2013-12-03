@@ -11,6 +11,7 @@ from gui.library.librarymodel import LibraryModel
 from gui.library.libraryfilter import LibraryFilterWidget
 from gui.downloader.downloader import Downloader
 from gui.downloader.importer import Importer
+from gui.data_invalid import DataInvalidAdder
 from gui.spectral_conf.spectral_conf import SpectralConf
 
 import gc, os
@@ -52,6 +53,7 @@ class Library(QMainWindow):
         self.import_action = QAction(app_icons['import'], "&Import local data", self)
         self.import_action.triggered.connect(self.import_slot)
         self.invalidate_action = QAction(app_icons['add_event'], "&Add data invalid event", self)
+        self.invalidate_action.triggered.connect(self.data_invalid_add_slot)
         self.data_menu.addAction(self.download_action)
         self.data_menu.addAction(self.import_action)
         self.data_menu.addSeparator()
@@ -71,6 +73,10 @@ class Library(QMainWindow):
     @Slot()
     def import_slot(self):
         self.importer = Importer(self).run()
+        
+    @Slot()
+    def data_invalid_add_slot(self):
+        self.data_inv = DataInvalidAdder(self).run()
         
     def run(self):
         self.show()
@@ -365,7 +371,7 @@ class LibraryCentralWidget(QWidget):
             print f_map
             script = export_td.make_matlab(f_map)
             f_qt = QFileDialog.getSaveFileName(self, 'Save', filter='*.m')
-            if f_qt is not None:
+            if f_qt is not None and len(f_qt[0]) > 0:
                 with open(f_qt[0], 'w') as f:
                     f.write(script)
 

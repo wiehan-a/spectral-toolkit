@@ -14,9 +14,6 @@ from data_access import local_sansa
 
 class Importer(QWidget):
     
-    widget_stack = []
-    finished_importing_signal = Signal()
-    
     def __init__(self, parent_):
 
         QWidget.__init__(self)
@@ -88,6 +85,10 @@ class Importer(QWidget):
         self.show()
         return self
         
+
+        
+ 
+
 
         
  

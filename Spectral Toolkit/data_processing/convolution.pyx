@@ -4,8 +4,6 @@ Created on Sep 24, 2013
 @author: Wiehan
 '''
 
-from fftw_wrapper.fftw_py import *
-
 import numpy as np
 cimport numpy as np
 
@@ -13,6 +11,8 @@ import numpy.fft as fft
 
 cimport cython
 from fftw_wrapper.cfftw cimport * 
+from fftw_wrapper.fftw_py import real_fft, inverse_real_fft
+from fftw_wrapper.fftw_py cimport real_fft_c, inverse_real_fft_c
 
 from cython.parallel import prange, parallel
 from cython.parallel cimport prange, parallel
@@ -111,7 +111,7 @@ cdef void mult_dfts(int N, fftw_complex * A, fftw_complex * B) nogil:
         B[idxx][0] = a * c - b * d
         B[idxx][1] = b * c + a * d
         
-@cython.cdivision(True)
+# @cython.cdivision(True)
 @cython.boundscheck(False)
 def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
                   np.ndarray[np.float64_t, ndim=1] h not None,
@@ -141,14 +141,12 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
     cdef int N = 2 ** int((np.log2(M * 4)))
     cdef int L = N - M + 1
      
-    x = np.hstack((x, np.zeros(delay)))
+    x = np.ascontiguousarray(np.hstack((x, np.zeros(delay))))
  
     cdef int out_start = 0
     cdef int start = L - (M - 1) - 1
      
     cdef np.ndarray[np.complex128_t, ndim = 1] H_ = real_fft(h, N)
-     
-    print len(H_), N
      
     if out_buffer is None:
         out_buffer = np.zeros(shape=(X,), dtype=np.float64)
@@ -164,32 +162,50 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
     for idx3 in xrange(L):
         output_data[idx3] = real_outblock[M - 1 + idx3] / N
      
-    cdef int idx, idx2
-    cdef np.ndarray[np.complex128_t, ndim = 1] local_out_block
-    cdef np.ndarray[np.float64_t, ndim = 1] local_real_out_block
-     
+    cdef int idx, idx2     
     cdef int last = L - (M - 1) + L * int(np.floor((X - (X % L) - (L - (M - 1))) / L))
-     
-#     with nogil, parallel(num_threads=8):  
-    for idx in xrange(L - (M - 1), last, L):
-        local_out_block = real_fft(x[idx:idx + N], N)
-        mult_dfts(N / 2 + 1, < fftw_complex *> H_.data, < fftw_complex *> local_out_block.data)
-        local_real_out_block = inverse_real_fft(local_out_block, N)
-        for idx2 in xrange(M - 1, N):
-            assert idx + idx2 < X
-            output_data[idx + idx2] = local_real_out_block[idx2] / N
     
+    cdef double * sli = <double *> x.data
+    cdef double * local_
+    cdef fftw_complex * local_out_block
+    cdef double * local_real_out_block
+    cdef fftw_plan forward_plan
+    
+    local_out_block = < fftw_complex *> fftw_alloc_complex(N/2+1)
+    local_real_out_block = < double *> fftw_alloc_real(N)
+    forward_plan = fftw_plan_dft_r2c_1d(N, local_real_out_block, local_out_block, FFTW_MEASURE)
+    backward_plan = fftw_plan_dft_c2r_1d(N, local_out_block, local_real_out_block, FFTW_MEASURE)
+     
+    with nogil, parallel(num_threads=8):
+         
+        local_out_block = < fftw_complex *> fftw_alloc_complex(N/2+1)
+        local_real_out_block = < double *> fftw_alloc_real(N)
+          
+        for idx in prange(L - (M - 1), last, L):
+            local_ = & sli[idx]
+            memcpy(local_real_out_block, local_, N * sizeof(double))
+            fftw_execute_dft_r2c(forward_plan, local_real_out_block, local_out_block)
+            mult_dfts(N / 2 + 1, < fftw_complex *> H_.data, local_out_block)
+            fftw_execute_dft_c2r(backward_plan, local_out_block, local_real_out_block)
+            
+            for idx2 in xrange(M - 1, N):
+                output_data[idx + idx2] = local_real_out_block[idx2] / N
+  
+        fftw_free(local_out_block)
+        fftw_free(local_real_out_block)
+    
+    cdef np.ndarray[np.complex128_t, ndim = 1] local_out_block_
+    cdef np.ndarray[np.float64_t, ndim = 1] local_real_out_block_
   
     if last < X:
-        local_out_block = real_fft(x[last:], N)
-        mult_dfts(N / 2 + 1, < fftw_complex *> H_.data, < fftw_complex *> local_out_block.data)
-        local_real_out_block = inverse_real_fft(local_out_block, N)
+        local_out_block_ = real_fft(x[last:], N)
+        mult_dfts(N / 2 + 1, < fftw_complex *> H_.data, < fftw_complex *> local_out_block_.data)
+        local_real_out_block_ = inverse_real_fft(local_out_block_, N)
             
         idx2 = 0
         for idx2 in xrange(M - 1, M - 1 + X % L):
-            output_data[last + idx2] = local_real_out_block[idx2] / N
+            output_data[last + idx2] = local_real_out_block_[idx2] / N
            
-     
     return out_buffer[delay:]
 
 # @cython.cdivision(True)

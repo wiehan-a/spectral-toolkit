@@ -15,11 +15,11 @@ import operator
 from gui.stdateedit import STDateTimeEdit
 
 operator_map = {
+                    '=' : operator.eq,
                     '<' : operator.lt,
                     '<=' : operator.le,
                     '>' : operator.gt,
                     '>=' : operator.ge,
-                    '=' : operator.eq,
                     '!=' : operator.ne
                 }
 
@@ -50,7 +50,7 @@ class LibraryFilterWidget(QWidget):
                             "sampling_rate": 125,
                             "source": "LSBB",
                             "start_time": datetime.datetime.now(),
-                            "missing_samples" : 0,
+                            "num_missing_samples" : 0,
                             "tag" : ""
                         }
         

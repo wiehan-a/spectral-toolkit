@@ -34,13 +34,22 @@ class ProcessTDWorker(QObject):
         files = sorted(files, key=lambda f: db[f]['start_time'])
         
         self.messaging.emit('Loading data...')
-        signal = data_engines[db[files[0]]['source']].read_in_filenames(files)
+        try:    
+            signal = data_engines[db[files[0]]['source']].read_in_filenames(files)
+        except:
+            self.messaging.emit("Error reading file.")
+            return
+            
         self.messaging.emit('Downsampling data for display...')
         signal = display_friendly.downsample_for_display(signal)
         self.messaging.emit('Plotting...')
         signal = signal[0 : len(signal)]
         
-        td = (db[files[-1]]['end_time'] - db[files[0]]['start_time']) / len(signal)
+        try:
+            td = (db[files[-1]]['end_time'] - db[files[0]]['start_time']) / len(signal)
+        except:
+            self.messaging.emit("Error reading file.")
+            return
          
         x_axis = [db[files[0]]['start_time'] + idx * td for idx in xrange(len(signal))]
         

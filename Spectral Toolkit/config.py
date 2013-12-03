@@ -125,12 +125,6 @@ def load_annotations(filename):
 def db_get_entry_count():
     return len(db)
 
-def db_load_data(filenames):
-    pass
-
-def db_discard_data(filenames):
-    pass
-
 def count_missing_samples(filename):
     annotations = load_annotations(filename)
     missing = 0
@@ -150,3 +144,26 @@ except IOError:
     initialize_config()
 except ValueError:
     initialize_config()
+    
+    
+import data_access
+maintenance_logs = {source : [] for source in data_access.data_engines}
+maintenance_logs_filenames = {source : source + ".log" for source in data_access.data_engines}
+
+def load_maintenance_logs():
+    for key in maintenance_logs.keys():
+        try:
+            with open(maintenance_logs_filenames[key], 'r') as f:
+                maintenance_logs[key] = json.load(f)
+        except:
+            pass
+        
+def save_maintenance_logs():
+    for key in maintenance_logs.keys():
+        try:
+            with open(maintenance_logs_filenames[key], 'w') as f:
+                json.dump(maintenance_logs[key], f, sort_keys=True, indent=4, separators=(',', ': '))
+        except:
+            pass
+        
+load_maintenance_logs()

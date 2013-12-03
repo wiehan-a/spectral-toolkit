@@ -25,6 +25,7 @@ cdef extern from 'fftw3.h':
 	void fftw_execute_dft_r2c( fftw_plan p, double *input, fftw_complex *output) nogil
 	void fftw_execute_dft_c2r( fftw_plan p, fftw_complex *input, double *output) nogil
 	void fftw_destroy_plan(fftw_plan plan) nogil
+	fftw_plan fftw_plan_dft_1d(int n, fftw_complex *input, fftw_complex *output, int sign, unsigned flags) nogil
 	
 	int fftw_export_wisdom_to_filename( char *filename)
 	int fftw_import_wisdom_from_filename( char *filename)

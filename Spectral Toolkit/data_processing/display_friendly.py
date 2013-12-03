@@ -21,7 +21,8 @@ def downsample_for_display(signal, target_length=TARGET_LENGTH, buffered=False):
         else:
             return signal
             # signal = multirate.decimate(signal, decimation_factor)
-             
+    
+    print "disp len", len(signal)
     return signal
             
         

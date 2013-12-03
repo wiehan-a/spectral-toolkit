@@ -1,8 +1,14 @@
+#!/usr/bin/env python
+# -*- coding: utf-8 -*- 
+
 '''
 Created on Sep 16, 2013
 
 @author: Wiehan
 '''
+
+from tendo import singleton
+me = singleton.SingleInstance()
 
 import os, ctypes
 if os.name == 'posix':
@@ -26,7 +32,6 @@ qt_app = QApplication(sys.argv)
 from gui.library.libraryview import Library
 
 mfftw.import_wisdom()
- 
      
 app = Library()
 app.run()
