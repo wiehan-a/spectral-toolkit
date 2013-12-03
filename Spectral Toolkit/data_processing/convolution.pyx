@@ -12,7 +12,6 @@ import numpy.fft as fft
 cimport cython
 from fftw_wrapper.cfftw cimport * 
 from fftw_wrapper.fftw_py import real_fft, inverse_real_fft
-from fftw_wrapper.fftw_py cimport real_fft_c, inverse_real_fft_c
 
 from cython.parallel import prange, parallel
 from cython.parallel cimport prange, parallel
