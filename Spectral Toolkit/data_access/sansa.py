@@ -238,13 +238,14 @@ class DownloaderWorker(QObject):
                 
         self.done.emit()
         
-def read_in_filenames(filenames, start_trim=0, end_trim=0):
-    return SansaFileBuffer(filenames, start_trim, end_trim)
+def read_in_filenames(filenames, start_trim=0, end_trim=0, trans_coeff=config_db['transducer_coefficient']):
+    return SansaFileBuffer(filenames, start_trim, end_trim, trans_coeff=config_db['transducer_coefficient'])
 
 class SansaFileBuffer(FileBuffer):
     
-    def __init__(self, files, begin_trim=0, end_trim=0):        
+    def __init__(self, files, begin_trim=0, end_trim=0, trans_coeff=config_db['transducer_coefficient']):        
         self.headers = [{'sample_count' : int(os.path.getsize(f) / 4)} for f in files]
+        self.trans_coeff = trans_coeff
         FileBuffer.__init__(self, files, begin_trim, end_trim)
         
     def read_proxy(self, filename, head, offset=0, samples='all'):
@@ -255,4 +256,4 @@ class SansaFileBuffer(FileBuffer):
                 buffer = f.read()
             else:
                 buffer = f.read(4 * samples)
-            return np.ndarray(shape=(int(len(buffer) / 4)), dtype='float32', buffer=buffer)
+            return self.trans_coeff * np.ndarray(shape=(int(len(buffer) / 4)), dtype='float32', buffer=buffer)

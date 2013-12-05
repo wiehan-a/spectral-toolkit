@@ -119,8 +119,10 @@ def db_add_entry(filename, source, component, sampling_rate, start_time, end_tim
         
 def load_annotations(filename):
     global db
-    with open(db[filename]['annotations_file']) as f:
-        return json.loads(f.read())
+    if db[filename].has_key('annotations_file'):
+        with open(db[filename]['annotations_file']) as f:
+            return json.loads(f.read())
+    return []
     
 def db_get_entry_count():
     return len(db)
@@ -139,7 +141,12 @@ reload_db()
 
 try:
     with open(CONFIG_FILENAME) as f:
+        
         config_db = json.loads(f.read())
+        if not config_db.has_key('transducer_coefficient'):
+            config_db['transducer_coefficient'] = 30
+        save_config()
+            
 except IOError:
     initialize_config()
 except ValueError:

@@ -193,6 +193,9 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
         fftw_free(local_out_block)
         fftw_free(local_real_out_block)
     
+    fftw_destroy_plan(forward_plan)
+    fftw_destroy_plan(backward_plan)
+    
     cdef np.ndarray[np.complex128_t, ndim = 1] local_out_block_
     cdef np.ndarray[np.float64_t, ndim = 1] local_real_out_block_
   

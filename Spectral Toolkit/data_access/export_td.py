@@ -13,7 +13,7 @@ def make_matlab(f_map):
     prototype_e = f_map[f_map.keys()[0]][-1]
     
     offset = {'SANSA' : '0', 'LSBB' : '240'}[db[prototype_f]['source']]
-    numtype = {'SANSA' : '\'float64\'', 'LSBB': '\'int32\''}[db[prototype_f]['source']]
+    numtype = {'SANSA' : '\'float32\'', 'LSBB': '\'int32\''}[db[prototype_f]['source']]
     fix_coefficient = {'SANSA' : '1', 'LSBB': '(2*20 /( 2^32 ))/(1/(20*0.83))'}[db[prototype_f]['source']]
     
     p = "% Auto-generated script\n"
@@ -40,7 +40,7 @@ def make_matlab(f_map):
     status = fseek(fid,''' + offset + ''', 'bof');
     info = dir(file);
     '''
-        p += signame + " = [" + signame + '''; fread(fid, info.bytes - 240, ''' + numtype + ''')];\n'''   
+        p += signame + " = [" + signame + '''; fread(fid, info.bytes - ''' + str(offset) + ''', ''' + numtype + ''')];\n'''   
         p += "    fclose(fid);\n"
         p += "end\n"
         p += signame + " = " + signame + "*" + fix_coefficient + ";\n"
@@ -58,9 +58,9 @@ def make_numpy(f_map):
     prototype_e = f_map[f_map.keys()[0]][-1]
     
     offset = {'SANSA' : '0', 'LSBB' : '240'}[db[prototype_f]['source']]
-    numtype = {'SANSA' : '\'float64\'', 'LSBB': '\'i4\''}[db[prototype_f]['source']]
+    numtype = {'SANSA' : '\'float32\'', 'LSBB': '\'i4\''}[db[prototype_f]['source']]
     fix_coefficient = {'SANSA' : '1', 'LSBB': '(2*20 /( 2.0**32 ))/(1/(20*0.83))'}[db[prototype_f]['source']]
-    bytes = {'SANSA' : '8', 'LSBB': '4'}[db[prototype_f]['source']]
+    bytes = {'SANSA' : '4', 'LSBB': '4'}[db[prototype_f]['source']]
     
     p = "# Auto-generated script\n"
     p += "# Origin: " + db[prototype_f]['source'] + "\n"

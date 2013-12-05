@@ -5,10 +5,12 @@ Created on Nov 28, 2013
 '''
 
 import numpy as np
+from config import load_annotations
+from copy import copy
 
 class FileBuffer:
     
-    def __init__(self, files, begin_trim=0, end_trim=0):
+    def __init__(self, files, begin_trim=0, end_trim=0, trans_coeff=None):
         self.files = files
         self.begin_trim = int(begin_trim)
         self.end_trim = int(end_trim)
@@ -18,6 +20,16 @@ class FileBuffer:
         
         for idx in xrange(1, len(self.files)):
             self.sample_counts[idx] = self.sample_counts[idx] + self.sample_counts[idx - 1]
+            
+        self.annotations = []
+        for idx, file in enumerate(files):
+            add_offset = self.sample_counts[idx - 1] if idx != 0 else 0
+            annotations = load_annotations(file)
+            for interval in annotations:
+                interval[0] += add_offset
+                interval[1] += add_offset
+            for annot in annotations:
+                self.annotations.append(annot)
         
         self.seek(0)
         
@@ -27,10 +39,27 @@ class FileBuffer:
     def __len__(self):
         return int(self.buffer_size - (self.begin_trim + self.end_trim))
     
+    def filter_annotations(self, key):
+        annotations = copy(self.annotations)
+        new_annotations = []
+        for annot in annotations:
+            print annot
+            if annot[1] > key.start and annot[0] < key.end:
+                if annot[0] < key.start:
+                    annot[0] = key.start
+                if annot[1] > key.end:
+                    annot[1] = key.end
+                annot[0] -= key.start
+                annot[1] -= key.end
+                new_annotations.append(annot)
+        return annotations                    
+        
     def __getitem__(self, key):
-        if isinstance(key, slice) :
+        if isinstance(key, slice):
             self.seek(key.start + self.begin_trim)
-            return self.read(key.stop - key.start)
+            #todo: this is probably wrong, fix
+            data = self.read(key.stop - key.start)
+            return data
         
     def seek(self, sample):
         '''
@@ -62,19 +91,18 @@ class FileBuffer:
             #
             
             diff_in_file = self.headers[f]['sample_count'] - foffset
-            #print f, offset, diff_in_file, samples_remaining, self.headers[f]['sample_count'], foffset
+            # print f, offset, diff_in_file, samples_remaining, self.headers[f]['sample_count'], foffset
             if diff_in_file <= samples_remaining:
-                print "file", f, "; sample", foffset, "to", diff_in_file+foffset, "in buffer", offset, 'to', offset + diff_in_file
+                print "file", f, "; sample", foffset, "to", diff_in_file + foffset, "in buffer", offset, 'to', offset + diff_in_file
                 data[offset : offset + diff_in_file] = self.read_proxy(self.files[f], self.headers[f], offset=foffset, samples=diff_in_file)
                 samples_remaining -= diff_in_file
                 f += 1
                 foffset = 0
                 offset += diff_in_file
-            else: #diff_in_file >= samples_remaining 
-                print "file", f, "; sample", foffset, "to", samples_remaining+foffset, "in buffer", offset, 'to', offset + samples_remaining
+            else:  # diff_in_file >= samples_remaining 
+                print "file", f, "; sample", foffset, "to", samples_remaining + foffset, "in buffer", offset, 'to', offset + samples_remaining
                 data[offset : offset + samples_remaining] = self.read_proxy(self.files[f], self.headers[f], offset=foffset, samples=samples_remaining)
                 samples_remaining = 0
-         
         
         return data
         

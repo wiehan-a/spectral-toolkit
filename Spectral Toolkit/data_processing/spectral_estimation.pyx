@@ -33,7 +33,7 @@ def periodogram(signal, window=windowing.apply_blackman_harris, interpolation_fa
     if window is not None:
         signal = window(signal, inplace=inplace_windowing)
 
-    fft_ = mfftw.real_fft(signal, interpolation_factor * N, threads = CPU_COUNT)
+    fft_ = mfftw.real_fft(signal, interpolation_factor * N, threads=CPU_COUNT)
     fft_ = np.square(fft_)
     fft_ = np.abs(fft_)
     
@@ -97,11 +97,16 @@ def welch(signal, W, window=windowing.apply_blackman, interpolation_factor=1):
     cdef np.ndarray[dtype = np.float64_t] output_buffer = np.zeros((W * interpolation_factor / 2 + 1,), dtype=np.float64)
     cdef int idx = 0
     
-    skip = int((1.0 - windowing.overlap[window])*W)
+    skip = int((1.0 - windowing.overlap[window]) * W)
     count = 0
     
-    for idx in xrange(0, len(signal)-W, skip):
+    print "LS", len(signal)
+    
+    for idx in xrange(0, len(signal) - W, skip):
+        print "LS", len(signal), "BS", signal.buffer_size, signal.begin_trim, signal.end_trim
+        print "signal[", idx, ":", (idx + W), ']'
         output_buffer += periodogram(signal[idx:idx + W], window, interpolation_factor=interpolation_factor)
+        print "LS", len(signal)
         count += 1
         
     return output_buffer / count

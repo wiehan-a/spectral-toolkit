@@ -21,7 +21,7 @@ class Plotter(QWidget):
     
     closed = Signal(QObject)
     
-    def __init__(self, x, y):
+    def __init__(self, x, y, annotations=None, x_unit=None, y_unit=None):
         QWidget.__init__(self)
         
         self.setWindowTitle('Spectral Toolkit (Figure)')
@@ -33,6 +33,9 @@ class Plotter(QWidget):
             myappid = 'MyOrganization.MyGui.1.0.0' # arbitrary string
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         
+        plt.close() 
+        plt.clf()
+        
         self.figure = plt.figure()
         self.canvas = FigureCanvas(self.figure)
         self.toolbar = NavigationToolbar(self.canvas, self)
@@ -40,9 +43,19 @@ class Plotter(QWidget):
         ax = self.figure.add_subplot(111)
         if x is not None:
             ax.plot(x, y)
+            if annotations is not None:
+                for annot in annotations:
+                    ax.axvspan(annot[0], annot[1], facecolor='g', alpha=0.5)
         else:
             ax.plot(y)
         self.figure.autofmt_xdate()
+        
+        if x_unit is not None:
+            self.figure.gca().set_xlabel(x_unit)
+            
+        if y_unit is not None:
+            self.figure.gca().set_ylabel(y_unit)
+            
         self.canvas.draw()
 
         # set the layout

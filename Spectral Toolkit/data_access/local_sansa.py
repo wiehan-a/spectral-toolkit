@@ -72,5 +72,5 @@ def import_files(filenames, tag, sampling_rate):
                 
                 
 
-def read_in_filenames(filenames, start_trim=0, end_trim=0):
-    return SansaFileBuffer(filenames, start_trim, end_trim)
+def read_in_filenames(filenames, start_trim=0, end_trim=0, trans_coeff=config_db['transducer_coefficient']):
+    return SansaFileBuffer(filenames, start_trim, end_trim, trans_coeff=config_db['transducer_coefficient'])

@@ -173,7 +173,7 @@ def ridge_snrs(ridge_lines, cwt_matrix, window_fact=0.1):
     return x, snr
 
 def peak_detection(arrx, sampling_rate):
-    arrx = display_friendly.downsample_for_display(arrx, target_length=20000)
+    arrx, _ = display_friendly.downsample_for_display(arrx, target_length=20000)
     f_scale = sampling_rate * np.arange(len(arrx)) / 2 / len(arrx)
     
     ridge_list = []

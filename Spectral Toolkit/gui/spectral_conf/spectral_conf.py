@@ -44,7 +44,7 @@ class SpectralConf(QWidget):
         if os.name == 'nt':
             # This is needed to display the app icon on the taskbar on Windows 7
             import ctypes
-            myappid = 'MyOrganization.MyGui.1.0.0' # arbitrary string
+            myappid = 'MyOrganization.MyGui.1.0.0'  # arbitrary string
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         
         self.main_vbox = QVBoxLayout(self)
@@ -181,8 +181,8 @@ class SpectralConf(QWidget):
     @Slot()
     def view_spectrum_slot(self):
         signal = 10 * np.log10(self.spectrum)
-        signal = downsample_for_display(signal)
-        new_plot = Plotter((self.new_sampling_rate / 2) * np.arange(len(signal)) / len(signal), signal)
+        signal, _ = downsample_for_display(signal)
+        new_plot = Plotter((self.new_sampling_rate / 2) * np.arange(len(signal)) / len(signal), signal, None,  "Frequency (Hz)", "(nT$^2$/Hz)$_{dB}$")
         new_plot.closed.connect(self.parent_().plot_closed_slot)
         self.parent_().plots.append(new_plot)
         
@@ -304,7 +304,13 @@ class DomainConfigWidget(QWidget):
         self.frequency_hbox.addWidget(self.max_freq_label)
         self.max_freq_edit = QLineEdit('' + str(config.db[self.parent_().files[0]]['sampling_rate'] / 2))
         self.frequency_hbox.addWidget(self.max_freq_edit)
-        self.frequency_hbox.addStretch()
+        
+        self.transducer_checkbox = QLabel('Transducer coefficient (nT/V):')
+        self.frequency_hbox.addWidget(self.transducer_checkbox)
+        self.transducer_edit = QLineEdit(str(config.config_db['transducer_coefficient']))
+        #self.transducer_edit.setEnabled(False)
+        #self.transducer_checkbox.stateChanged.connect(lambda: self.transducer_edit.setEnabled(self.transducer_checkbox.isChecked()))
+        self.frequency_hbox.addWidget(self.transducer_edit)
         
         self.discontinuity_chkbx = QCheckBox('Detect and correct time domain discontinuities')
         self.main_vbox.addWidget(self.discontinuity_chkbx)
@@ -328,14 +334,17 @@ class DomainConfigWidget(QWidget):
         self.whitening_hbox.addWidget(self.whitening_order_spinner)
         
     def get_params(self):
-        return  {   
+        dict_ =  {   
                  'start_time': self.start_date_dateedit.date(),
                  'end_time': self.end_date_dateedit.date(),
                  'max_frequency' : float(self.max_freq_edit.text()),
                  'do_whitening' : self.whitening_chkbx.isChecked(),
                  'whitening_order' : int(self.whitening_order_spinner.value()),
-                 'fix_discontinuities' : self.discontinuity_chkbx.isChecked()
+                 'fix_discontinuities' : self.discontinuity_chkbx.isChecked(),
+                 'transducer_coefficient' : float(self.transducer_edit.text())
                 }
+        
+        return dict_
         
     @Slot()
     def whitening_slot(self):

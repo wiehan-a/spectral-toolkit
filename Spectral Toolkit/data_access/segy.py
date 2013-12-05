@@ -49,8 +49,8 @@ def read_segy_data(filename, head, offset=0, samples='all'):
     
     f.close()
      
-    transducer_coefficient = 1 / (20 * 0.83)
-    sensitivity = 2 * 20 / (2 ** 32)
+    transducer_coefficient = 1.0 / (20 * 0.83)
+    sensitivity = 2.0 * 20 / (2.0 ** 32)
     # data = -(data - np.mean(data)) * sensitivity / transducer_coefficient
     data = -(data) * sensitivity / transducer_coefficient
  
@@ -61,7 +61,7 @@ def read_in_segy(files, begin_trim=0, end_trim=0):
 
 class SegyFileBuffer(FileBuffer):
     
-    def __init__(self, files, begin_trim=0, end_trim=0):        
+    def __init__(self, files, begin_trim=0, end_trim=0, trans_coeff=None):        
         self.headers = [read_segy_head(f) for f in files]
         FileBuffer.__init__(self, files, begin_trim, end_trim)
         

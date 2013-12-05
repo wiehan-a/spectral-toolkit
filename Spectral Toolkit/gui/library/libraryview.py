@@ -233,10 +233,10 @@ class LibraryCentralWidget(QWidget):
             
         return f_map
         
-    @Slot(np.ndarray, np.ndarray)
-    def display_td_processing_done_slot(self, x_axis, signal):
+    @Slot(np.ndarray, np.ndarray, list)
+    def display_td_processing_done_slot(self, x_axis, signal, annotations):
         print "I crash here"
-        plotter = Plotter(x_axis, signal)
+        plotter = Plotter(x_axis, signal, annotations, None, "nT")
         plotter.closed.connect(self.plot_closed_slot)
         self.parent().statusBar().showMessage('Ready')
         self.plots.append(plotter)
@@ -394,6 +394,8 @@ class LibraryCentralWidget(QWidget):
         
     @Slot(QObject)
     def plot_closed_slot(self, plot):
+        print "print this runs"
+        plt.close(plot.figure)
         self.plots.remove(plot)
         
     @Slot()

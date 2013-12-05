@@ -79,17 +79,22 @@ class PreProcessingWorker(QObject):
         
         sr = db[files[0]]['sampling_rate']
         start_sample = sr * (self.params['start_time'] - db[files[0]]['start_time']).total_seconds()
-        end_sample = sr * (self.params['end_time'] - db[files[-1]]['end_time']).total_seconds() - 1
+        print start_sample
+        end_sample = -1*sr * (self.params['end_time'] - db[files[-1]]['end_time']).total_seconds() - 1
+        print end_sample
         
-        signal = data_engines[db[files[0]]['source']].read_in_filenames(files, start_sample, end_sample)
-        
+        signal = data_engines[db[files[0]]['source']].read_in_filenames(files, start_sample, end_sample, self.params['transducer_coefficient'])
+        print len(signal)
         pass_ = 1
         if self.params['fix_discontinuities']:
+            print "before fixing", len(signal)
             signal = signal[0 : len(signal)]
+            print signal
             self.update_message.emit('Fixing discontinuities (pass ' + str(pass_) + ")")
             p_events = 0
             while pass_ < 20:
                 signal, events = find_discontinuities(signal)
+                print "after fixing", len(signal)
                 if events == 0 or events == p_events:
                     break
                 p_events = events

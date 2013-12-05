@@ -59,10 +59,12 @@ def find_discontinuities(np.ndarray[np.float64_t] signal, double tolerance=4, ma
     last_event_end = 0
     for idx, tup in enumerate(events):
         back = max(0, last_event_end + 1, tup[0] - max_back)
-        view = signal[back:tup[0]]
+        view = signal[back:tup[0]+1]
+        if len(view) == 0:
+            print 'empty slice', back, tup[0]
         baseline = np.mean(view)
         window = np.exp(np.log(0.0001) / len(view) * np.arange(len(view)))
-        signal[back:tup[0]] = (signal[back:tup[0]] - baseline) * window + baseline
+        signal[back : tup[0] + 1] = (signal[back : tup[0] + 1] - baseline) * window + baseline
 
         signal[tup[0]: tup[1] + 1] = baseline
         
