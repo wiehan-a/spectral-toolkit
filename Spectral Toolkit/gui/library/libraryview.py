@@ -9,12 +9,12 @@ from PySide.QtCore import *
 from PySide.QtGui import *
 from gui.library.librarymodel import LibraryModel
 from gui.library.libraryfilter import LibraryFilterWidget
-from gui.downloader.downloader import Downloader
+from gui.downloader.downloader import Downloader, DownloaderWidget
 from gui.downloader.importer import Importer
 from gui.data_invalid import DataInvalidAdder
 from gui.spectral_conf.spectral_conf import SpectralConf
 
-import gc, os
+import gc, os, datetime, pytz
 
 
 from config import *
@@ -25,6 +25,9 @@ from data_access import export_td
 
 
 class Library(QMainWindow):
+    
+    workers = []
+    worker_threads = []
     
     def __init__(self):
         QMainWindow.__init__(self)
@@ -46,6 +49,9 @@ class Library(QMainWindow):
         
         self.init_menus()
         
+    def make_lambda(self, ot):
+        return lambda: self.overview_triggered(ot) 
+        
     def init_menus(self):
         self.data_menu = self.menuBar().addMenu("&Data")
         self.download_action = QAction(app_icons['download'], "&Download data", self)
@@ -60,8 +66,12 @@ class Library(QMainWindow):
         self.data_menu.addAction(self.invalidate_action)
         
         self.overviews_menu = self.menuBar().addMenu("&Overviews")
-        self.sansa_menu = self.overviews_menu.addMenu("&SANSA")
-        self.lsbb_menu = self.overviews_menu.addMenu("&LSBB")
+        self.overview_times = ["Last 10 &minutes", "Last &hour", "Last &6 hours", "Last &24 hours"]
+        self.overview_timedeltas = [datetime.timedelta(minutes=10), datetime.timedelta(hours=1), datetime.timedelta(hours=6), datetime.timedelta(hours=24)]
+        for idx, ot in enumerate(self.overview_times):
+            action = QAction(ot, self)
+            action.triggered.connect(self.make_lambda(self.overview_timedeltas[idx]))
+            self.overviews_menu.addAction(action)
         
         self.help_menu = self.menuBar().addMenu("&Help")
         self.help_action = QAction(app_icons['help'], "&User guide", self)
@@ -70,6 +80,67 @@ class Library(QMainWindow):
         self.help_menu.addSeparator()
         self.help_menu.addAction(self.about_action)
         
+    @Slot()
+    def cancel_successful(self):
+        pass
+    
+    @Slot()
+    def done_slot(self):
+        print "done downloading data for overview"
+        files, start, end = query_db_by_time('SANSA', self.overview_params['start_date'], self.overview_params['end_date'])
+        
+        print files
+        
+        worker = ProcessTDWorker(files, self, multi_component=True)
+        worker.messaging.connect(self.statusBar().showMessage)
+        self.lib.workers.append(worker)
+        process_td_thread = QThread()
+        self.lib.worker_threads.append(process_td_thread)
+        worker.moveToThread(process_td_thread)
+        worker.done.connect(self.overview_processing_done_slot)
+        process_td_thread.started.connect(worker.process_td)
+        process_td_thread.start()
+        worker.done.connect(process_td_thread.quit)
+        process_td_thread.finished.connect(process_td_thread.deleteLater)
+        
+        estimation_window = SpectralConf(files, self.lib, True, self.overview_params['start_date'], self.overview_params['end_date'])
+        estimation_window.show()
+        estimation_window.closed.connect(self.lib.spec_est_close_slot)
+        self.lib.estimation_windows.append(estimation_window)
+        
+        
+    @Slot()
+    def overview_processing_done_slot(self, x_axis, signals, annotations, components):
+        print "done downsampling"
+        self.statusBar().showMessage('Plotting...')
+        plotter = Plotter(x_axis, signals, annotations, None, "nT", components)
+        plotter.closed.connect(self.lib.plot_closed_slot)
+        self.statusBar().showMessage('Ready')
+        self.lib.plots.append(plotter)
+        self.overview_downloader.setVisible(False)
+        self.overview_downloader.deleteLater()
+        
+        
+    def overview_triggered(self, timedelta_):
+        now = datetime.datetime.utcnow()
+        print "get from", now - timedelta_, "to", now
+        
+        self.overview_params = {'access_engine': data_access.sansa,
+                  'sampling_rate': 125,
+                  'start_date': now - timedelta_,
+                  'end_date': now,
+                  'source': 'SANSA'}
+        
+        self.overview_downloader = DownloaderWidget(self.overview_params, self, stand_alone=True).run()
+        
+        
+        # just download the neccessary data (blindly): show downloader gui
+        
+        # need to query db by time: get a list of files whose end times > start and start_times < end
+        # sort by time
+        # then figure out how many samples in and out
+        # not too hard
+    
     @Slot()
     def import_slot(self):
         self.importer = Importer(self).run()
@@ -235,7 +306,7 @@ class LibraryCentralWidget(QWidget):
         
     @Slot(np.ndarray, np.ndarray, list)
     def display_td_processing_done_slot(self, x_axis, signal, annotations):
-        print "I crash here"
+        # print "I crash here"
         plotter = Plotter(x_axis, signal, annotations, None, "nT")
         plotter.closed.connect(self.plot_closed_slot)
         self.parent().statusBar().showMessage('Ready')

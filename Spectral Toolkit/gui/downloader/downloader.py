@@ -187,11 +187,15 @@ class DownloaderWidget(QWidget):
     title = "<h3>Step 3: Downloading</h3>"
     
     
-    def __init__(self, params, parent_):
+    def __init__(self, params, parent_, stand_alone=False):
         QWidget.__init__(self)
         
         self.params = params
+        
+        print "PPP", params
+        
         self.parent_ = parent_
+        self.stand_alone = stand_alone
         
         self.data_engine = params['access_engine']
         
@@ -202,8 +206,12 @@ class DownloaderWidget(QWidget):
         self.overall_size = self.data_engine.calculate_size(params)
         
         self.main_vbox = QVBoxLayout(self)
-        self.main_vbox.setAlignment(Qt.AlignTop)
-        self.main_vbox.setContentsMargins(0, 0, 0, 0)
+        
+        if not stand_alone:
+            self.main_vbox.setAlignment(Qt.AlignTop)
+            self.main_vbox.setContentsMargins(0, 0, 0, 0)
+        else:
+            self.setWindowTitle("Downloading data")
         
         if self.data_engine.SUPPORT_PARTIAL_PROGRESS_REPORTING:
             self.current_progress_label = QLabel()
@@ -244,8 +252,9 @@ class DownloaderWidget(QWidget):
         
     def get_actions(self, parent):
         
-        back = QPushButton(app_icons['back'], 'Back')
-        back.clicked.connect(parent.go_back)
+        if not self.stand_alone:
+            back = QPushButton(app_icons['back'], 'Back')
+            back.clicked.connect(parent.go_back)
         
         cancel = QPushButton(app_icons['cancel'], 'Cancel')
         cancel.clicked.connect(parent.cancel_download_slot)
@@ -282,7 +291,10 @@ class DownloaderWidget(QWidget):
                                              kwparams['overall_size'] + ' downloaded')
         self.overall_progress_bar.setValue(kwparams['overall_bytes'])
         
-
+        
+    def run(self):
+        self.show()
+        return self
         
  
 

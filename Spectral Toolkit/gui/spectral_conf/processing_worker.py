@@ -27,46 +27,53 @@ class ProcessingWorker(QObject):
     done = Signal(np.ndarray)
     update_message = Signal(str)
     
-    def __init__(self, signal, params):
+    def __init__(self, signals, params):
         QObject.__init__(self)
-        self.signal = signal
+        self.signals = signals
         self.params = params
         
     @Slot()
     def do_processing(self):
-        N = len(self.signal)
+        N = len(self.signals[0])
         
-        sigpower = None
+        sigpower = []
         if self.params['fix_power']:
-            sigpower = np.sum(np.square(self.signal)) / N
+            for signal in self.signals:
+                sigpower.append(np.sum(np.square(signal)) / N)
         
         interpol_factor = 1
         if self.params['do_interpol']:
             interpol_factor = self.params['interpol_factor']
         
-        estimate = None
-        if self.params['method'] == 'Periodogram':
-            estimate = spec_est.periodogram(self.signal[0 : len(self.signal)], interpolation_factor=interpol_factor, window=self.params['window'])
-        elif self.params['method'] == 'Bartlett':
-            estimate = spec_est.bartlett(self.signal, self.params['parameter'], interpolation_factor=interpol_factor, window=self.params['window'])
-        elif self.params['method'] == 'Welch':
-            estimate = spec_est.welch(self.signal, self.params['parameter'], interpolation_factor=interpol_factor, window=self.params['window'])
-        else:
-            model, sigma = sigproc.auto_regression(self.signal[0 : len(self.signal)], self.params['parameter'])
-            print sigma
-            estimate = sigma / spec_est.periodogram(model, window=None, interpolation_factor=interpol_factor * len(self.signal) / len(model), disable_normalize=True)
-            model = None
+        estimates = []
         
-        if self.params['fix_power']:
-            print "fixing power"
-            estimate_power = np.sum(estimate) / len(estimate)
-            estimate = estimate * (sigpower / estimate_power)
-            print sigpower, ', ' , np.sum(estimate) / len(estimate)
-        self.done.emit(estimate)
+        for signal in self.signals:
+            estimate = None
+            if self.params['method'] == 'Periodogram':
+                estimate = spec_est.periodogram(signal[0 : len(signal)], interpolation_factor=interpol_factor, window=self.params['window'])
+            elif self.params['method'] == 'Bartlett':
+                estimate = spec_est.bartlett(signal, self.params['parameter'], interpolation_factor=interpol_factor, window=self.params['window'])
+            elif self.params['method'] == 'Welch':
+                estimate = spec_est.welch(signal, self.params['parameter'], interpolation_factor=interpol_factor, window=self.params['window'])
+            else:
+                model, sigma = sigproc.auto_regression(signal[0 : len(signal)], self.params['parameter'])
+                print sigma
+                estimate = sigma / spec_est.periodogram(model, window=None, interpolation_factor=interpol_factor * len(signal) / len(model), disable_normalize=True)
+                model = None
+            
+            if self.params['fix_power']:
+                print "fixing power"
+                estimate_power = np.sum(estimate) / len(estimate)
+                estimate = estimate * (sigpower / estimate_power)
+                print sigpower, ', ' , np.sum(estimate) / len(estimate)
+            
+            estimates.append(estimate)
+                
+        self.done.emit(estimates)
         
 class PreProcessingWorker(QObject):
     
-    done = Signal(object, float)
+    done = Signal(object, float, list)
     update_message = Signal(str)
     
     def __init__(self, params):
@@ -76,69 +83,77 @@ class PreProcessingWorker(QObject):
     @Slot()
     def do_processing(self):
         files = self.params['files']
+        first_file = files.values()[0][0]
+        last_file = files.values()[0][-1]
         
-        sr = db[files[0]]['sampling_rate']
-        start_sample = sr * (self.params['start_time'] - db[files[0]]['start_time']).total_seconds()
+        sr = db[first_file]['sampling_rate']
+        start_sample = sr * (self.params['start_time'] - db[first_file]['start_time']).total_seconds()
         print start_sample
-        end_sample = -1*sr * (self.params['end_time'] - db[files[-1]]['end_time']).total_seconds() - 1
+        end_sample = -1*sr * (self.params['end_time'] - db[last_file]['end_time']).total_seconds()
         print end_sample
         
-        signal = data_engines[db[files[0]]['source']].read_in_filenames(files, start_sample, end_sample, self.params['transducer_coefficient'])
-        print len(signal)
-        pass_ = 1
-        if self.params['fix_discontinuities']:
-            print "before fixing", len(signal)
-            signal = signal[0 : len(signal)]
-            print signal
-            self.update_message.emit('Fixing discontinuities (pass ' + str(pass_) + ")")
-            p_events = 0
-            while pass_ < 20:
-                signal, events = find_discontinuities(signal)
-                print "after fixing", len(signal)
-                if events == 0 or events == p_events:
-                    break
-                p_events = events
-                pass_ += 1
+        components = files.keys()
+        print components
+        signals = []
         
-#         signal = signal - np.mean(signal)
+        for comp in components:
+            signals.append(data_engines[db[first_file]['source']].read_in_filenames(files[comp], start_sample, end_sample, self.params['transducer_coefficient']))
         
-#         print len(signal)
+        for idx in xrange(len(signals)):
+            pass_ = 1
+            if self.params['fix_discontinuities']:
+                print "before fixing", len(signals[idx])
+                signals[idx] = signals[idx][0 : len(signals[idx])]
+                print signals[idx]
+                self.update_message.emit('Fixing discontinuities (pass ' + str(pass_) + ")")
+                p_events = 0
+                while pass_ < 20:
+                    signals[idx], events = find_discontinuities(signals[idx])
+                    print "after fixing", len(signals[idx])
+                    if events == 0 or events == p_events:
+                        break
+                    p_events = events
+                    pass_ += 1
         
         mf = self.params['max_frequency']
-        decimation_factor = int((sr / 2.0) / mf)
-        
-        sr_cpy = sr
         
         self.update_message.emit('Downsampling...')
         
-        try:
-            while decimation_factor >= 2:
-                print len(signal)
-                if decimation_factor > 10:
-                    signal = multirate.decimate(signal, 10)
-                    decimation_factor /= 10
-                    sr_cpy /= 10
-                else:
-                    signal = multirate.decimate(signal, int(decimation_factor))
-                    sr_cpy /= int(decimation_factor)
-                    decimation_factor /= int(decimation_factor)
-        except multirate.NotEnoughSamplesException:
-            pass
+        for idx in xrange(len(signals)):
+            
+            decimation_factor = int((sr / 2.0) / mf)
+            sr_cpy = sr
+            
+            try:
+                while decimation_factor >= 2:
+                    print len(signals[idx])
+                    if decimation_factor > 10:
+                        signals[idx] = multirate.decimate(signals[idx], 10)
+                        decimation_factor /= 10
+                        sr_cpy /= 10
+                    else:
+                        signals[idx] = multirate.decimate(signals[idx], int(decimation_factor))
+                        sr_cpy /= int(decimation_factor)
+                        decimation_factor /= int(decimation_factor)
+            except multirate.NotEnoughSamplesException:
+                pass
         
 #         print len(signal)
 
         if self.params['do_whitening']:
-            self.update_message.emit('Calculating normalisation model...')
-            model, _ = sigproc.auto_regression(signal, self.params['whitening_order'])
-            self.update_message.emit('Applying normalisation filter...')
-            if self.params['whitening_order'] < 10:
-#                 print len(signal)
-#                 print len(model)
-                signal = convolution.slow_convolve(signal, model)
-            else:
-                signal = convolution.fast_convolve_fftw_w(signal, model)
+            
+            for idx in xrange(len(signals)):
+                self.update_message.emit('Calculating normalisation model...')
+                model, _ = sigproc.auto_regression(signals[idx], self.params['whitening_order'])
+                self.update_message.emit('Applying normalisation filter...')
+                if self.params['whitening_order'] < 10:
+    #                 print len(signal)
+    #                 print len(model)
+                    signals[idx] = convolution.slow_convolve(signals[idx], model)
+                else:
+                    signals[idx] = convolution.fast_convolve_fftw_w(signals[idx], model)
         
         self.update_message.emit('Done')
-        self.done.emit(signal, sr_cpy)
+        self.done.emit(signals, sr_cpy, components)
         
         

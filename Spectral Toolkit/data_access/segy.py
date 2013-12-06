@@ -61,7 +61,7 @@ def read_in_segy(files, begin_trim=0, end_trim=0):
 
 class SegyFileBuffer(FileBuffer):
     
-    def __init__(self, files, begin_trim=0, end_trim=0, trans_coeff=None):        
+    def __init__(self, files, begin_trim=0, end_trim=0, trans_coeff=1):        
         self.headers = [read_segy_head(f) for f in files]
         FileBuffer.__init__(self, files, begin_trim, end_trim)
         

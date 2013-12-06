@@ -21,7 +21,7 @@ class Plotter(QWidget):
     
     closed = Signal(QObject)
     
-    def __init__(self, x, y, annotations=None, x_unit=None, y_unit=None):
+    def __init__(self, x, y, annotations=None, x_unit=None, y_unit=None, component_labels=None):
         QWidget.__init__(self)
         
         self.setWindowTitle('Spectral Toolkit (Figure)')
@@ -42,7 +42,16 @@ class Plotter(QWidget):
 
         ax = self.figure.add_subplot(111)
         if x is not None:
-            ax.plot(x, y)
+            if isinstance(y, list):
+                for idx, signal in enumerate(y):
+                    print "idx, signal:", idx, signal
+                    if component_labels is not None and len(component_labels) == len(y):
+                        ax.plot(x, signal, label=component_labels[idx])
+                    else:
+                        ax.plot(x, signal)
+                ax.legend()
+            else:
+                ax.plot(x, y)
             if annotations is not None:
                 for annot in annotations:
                     ax.axvspan(annot[0], annot[1], facecolor='g', alpha=0.5)

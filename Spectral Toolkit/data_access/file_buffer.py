@@ -10,7 +10,7 @@ from copy import copy
 
 class FileBuffer:
     
-    def __init__(self, files, begin_trim=0, end_trim=0, trans_coeff=None):
+    def __init__(self, files, begin_trim=0, end_trim=0, trans_coeff=1):
         self.files = files
         self.begin_trim = int(begin_trim)
         self.end_trim = int(end_trim)

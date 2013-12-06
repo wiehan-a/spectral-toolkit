@@ -127,6 +127,41 @@ def load_annotations(filename):
 def db_get_entry_count():
     return len(db)
 
+        # need to query db by time: get a list of files whose end times > start and start_times < end
+        # sort by time
+        # then figure out how many samples in and out
+        
+        
+def query_db_by_time(source, start_time, end_time, components_filter=[]):
+    '''
+    return file lists and trims
+    '''
+    
+    files = [key for key, value in db.items() 
+                            if value['source'] == source
+                                and (value['end_time'] > start_time and value['start_time'] < end_time) ]
+    
+    components = list(set([ db[file]['component'] for file in files ]))
+    
+    print components
+    
+    files_by_component = {component : [] for component in components}
+    
+    for file in files:
+        files_by_component[db[file]['component']].append(file)
+        
+    for component in components:
+        files_by_component[component] = sorted(files_by_component[component], key=lambda f: db[f]['start_time'])
+        
+    first_file = files_by_component[components[0]][0]
+    last_file = files_by_component[components[0]][-1]
+    sr = db[first_file]['sampling_rate']
+    start_sample = int(sr * (start_time - db[first_file]['start_time']).total_seconds())
+    end_sample = int(-1 * sr * (end_time - db[last_file]['end_time']).total_seconds())
+
+    return files_by_component, start_sample, end_sample
+    
+
 def count_missing_samples(filename):
     annotations = load_annotations(filename)
     missing = 0

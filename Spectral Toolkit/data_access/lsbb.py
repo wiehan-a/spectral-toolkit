@@ -216,7 +216,7 @@ def get_single_file_size(params):
 def calculate_size(params):
     return (get_number_of_files(params)) * get_single_file_size(params)
 
-def read_in_filenames(filenames, begin_trim=0, end_trim=0, trans_coeff=None):
+def read_in_filenames(filenames, begin_trim=0, end_trim=0, trans_coeff=1):
     return segy.read_in_segy(filenames, begin_trim, end_trim)
 
 if __name__ == '__main__':

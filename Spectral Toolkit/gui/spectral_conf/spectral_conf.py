@@ -29,13 +29,22 @@ class SpectralConf(QWidget):
     
     closed = Signal(QObject)
     
-    def __init__(self, files, parent_):
+    def __init__(self, files, parent_, automate=False, start_time=None, end_time=None):
 
         QWidget.__init__(self)
         
         self.parent_ = weakref.ref(parent_)
-        self.files = files
-        self.files = sorted(self.files, key=lambda f: config.db[f]['start_time'])
+        
+        if not isinstance(files, dict):
+            self.files = { db[files[0]]['component'] : files }
+        else:
+            self.files = files
+            
+        print self.files
+            
+        for key, files_ in self.files.items():
+            self.files[key] = sorted(files_, key=lambda f: config.db[f]['start_time'])
+        self.automate = automate
         
         self.setWindowTitle('Spectral Toolkit (Spectral estimation)')
         self.setMinimumWidth(650)
@@ -59,7 +68,7 @@ class SpectralConf(QWidget):
         self.hosted_vbox = QVBoxLayout()
         self.main_vbox.addLayout(self.hosted_vbox)
          
-        self.hosted_widget = DomainConfigWidget(self)
+        self.hosted_widget = DomainConfigWidget(self, start_time, end_time)
         self.header_title_label.setText(self.hosted_widget.title)
         self.hosted_vbox.addWidget(self.hosted_widget)
          
@@ -76,6 +85,10 @@ class SpectralConf(QWidget):
         self.action_bar_hbox.addWidget(self.next_button)
         
         self.setLayout(self.main_vbox)
+        
+        self.setVisible(not automate)
+        if automate:
+            self.next_slot_domain()
         
     @Slot()
     def cancel_slot(self):
@@ -124,17 +137,23 @@ class SpectralConf(QWidget):
         print "TTT"
         
     @Slot(np.ndarray, float)
-    def preprocessing_done_slot(self, signal, new_sampling_rate):
+    def preprocessing_done_slot(self, signal, new_sampling_rate, components):
         self.next_button.setEnabled(True)
         self.progress_bar.setMaximum(1)
         self.progress_bar.setValue(1)
         
         self.signal = signal
+        self.components = components
+        self.hosted_widget.parameter_edit.setText(str(min(len(signal[0]), 2000)))
         
 #         print signal 
         
         self.new_sampling_rate = new_sampling_rate
         self.hosted_widget.update_info_table()
+        
+        if self.automate:
+            self.next_slot_estim()
+            self.setMaximumHeight(100)
         
     @Slot(np.ndarray)
     def processing_done_slot(self, signal):
@@ -158,6 +177,11 @@ class SpectralConf(QWidget):
         self.peak_button.clicked.connect(self.peak_detection_slot)
         self.main_vbox.addWidget(self.peak_button)
         
+        if self.automate:
+            self.setVisible(False)
+            self.view_spectrum_slot()
+            self.close()
+        
     @Slot()
     def export_matlab_spectrum(self):
         f_qt = QFileDialog.getSaveFileName(self, 'Save', filter='*.m')
@@ -180,9 +204,15 @@ class SpectralConf(QWidget):
         
     @Slot()
     def view_spectrum_slot(self):
-        signal = 10 * np.log10(self.spectrum)
-        signal, _ = downsample_for_display(signal)
-        new_plot = Plotter((self.new_sampling_rate / 2) * np.arange(len(signal)) / len(signal), signal, None,  "Frequency (Hz)", "(nT$^2$/Hz)$_{dB}$")
+        signals = []
+        for signal in self.spectrum:
+            signal, _ = downsample_for_display(signal)
+            signal = 10 * np.log10(signal)
+            signals.append(signal)
+            
+        print signals, self.components
+            
+        new_plot = Plotter((self.new_sampling_rate / 2) * np.arange(len(signals[0])) / len(signals[0]), signals, None, "Frequency (Hz)", "(nT$^2$/Hz)$_{dB}$", self.components)
         new_plot.closed.connect(self.parent_().plot_closed_slot)
         self.parent_().plots.append(new_plot)
         
@@ -250,6 +280,8 @@ class SpectralConf(QWidget):
         self.cancel_button.setVisible(False)
         self.next_button.setVisible(False)
         
+        self.setVisible(True)
+        
         self.signal = None
         
     def closeEvent(self, *args, **kwargs):
@@ -270,7 +302,7 @@ class DomainConfigWidget(QWidget):
     title = "<h3>Step 1: Configure preprocessing options</h3>"
     
     
-    def __init__(self, parent_):
+    def __init__(self, parent_, start_time=None, end_time=None):
         QWidget.__init__(self)
         
         self.parent_ = weakref.ref(parent_)
@@ -284,17 +316,30 @@ class DomainConfigWidget(QWidget):
         start_date_label = QLabel('Start time:')
         self.date_hbox.addWidget(start_date_label)
         self.start_date_dateedit = STDateTimeEdit()
-        self.start_date_dateedit.setMinimumDateTime(QDateTime(config.db[self.parent_().files[0]]['start_time']))
-        self.start_date_dateedit.setMaximumDateTime(QDateTime(config.db[self.parent_().files[0]]['end_time']))
-        self.start_date_dateedit.setDateTime(QDateTime(config.db[self.parent_().files[0]]['start_time']))
+        
+        first_file = self.parent_().files.values()[0][0]
+        
+        self.start_date_dateedit.setMinimumDateTime(QDateTime(config.db[first_file]['start_time']))
+        self.start_date_dateedit.setMaximumDateTime(QDateTime(config.db[first_file]['end_time']))
+        self.start_date_dateedit.setDateTime(QDateTime(config.db[first_file]['start_time']))
+        
+        if start_time is not None:
+            self.start_date_dateedit.setDateTime(QDateTime(start_time))
+        
         self.date_hbox.addWidget(self.start_date_dateedit)
         self.date_hbox.addSpacing(10)
         end_date_label = QLabel('End time:')
         self.date_hbox.addWidget(end_date_label)
         self.end_date_dateedit = STDateTimeEdit()
-        self.end_date_dateedit.setMinimumDateTime(QDateTime(config.db[self.parent_().files[-1]]['start_time']))
-        self.end_date_dateedit.setMaximumDateTime(QDateTime(config.db[self.parent_().files[-1]]['end_time']))
-        self.end_date_dateedit.setDateTime(QDateTime(config.db[self.parent_().files[-1]]['end_time']))
+        
+        last_file = self.parent_().files.values()[0][-1]
+        self.end_date_dateedit.setMinimumDateTime(QDateTime(config.db[last_file]['start_time']))
+        self.end_date_dateedit.setMaximumDateTime(QDateTime(config.db[last_file]['end_time']))
+        self.end_date_dateedit.setDateTime(QDateTime(config.db[last_file]['end_time']))
+        
+        if end_time is not None:
+            self.end_date_dateedit.setDateTime(QDateTime(end_time))
+        
         self.date_hbox.addWidget(self.end_date_dateedit)
         
         
@@ -302,14 +347,14 @@ class DomainConfigWidget(QWidget):
         self.main_vbox.addLayout(self.frequency_hbox)
         self.max_freq_label = QLabel('Maximum frequency of interest:')
         self.frequency_hbox.addWidget(self.max_freq_label)
-        self.max_freq_edit = QLineEdit('' + str(config.db[self.parent_().files[0]]['sampling_rate'] / 2))
+        self.max_freq_edit = QLineEdit('' + str(config.db[first_file]['sampling_rate'] / 2))
         self.frequency_hbox.addWidget(self.max_freq_edit)
         
         self.transducer_checkbox = QLabel('Transducer coefficient (nT/V):')
         self.frequency_hbox.addWidget(self.transducer_checkbox)
         self.transducer_edit = QLineEdit(str(config.config_db['transducer_coefficient']))
-        #self.transducer_edit.setEnabled(False)
-        #self.transducer_checkbox.stateChanged.connect(lambda: self.transducer_edit.setEnabled(self.transducer_checkbox.isChecked()))
+        # self.transducer_edit.setEnabled(False)
+        # self.transducer_checkbox.stateChanged.connect(lambda: self.transducer_edit.setEnabled(self.transducer_checkbox.isChecked()))
         self.frequency_hbox.addWidget(self.transducer_edit)
         
         self.discontinuity_chkbx = QCheckBox('Detect and correct time domain discontinuities')
@@ -334,7 +379,7 @@ class DomainConfigWidget(QWidget):
         self.whitening_hbox.addWidget(self.whitening_order_spinner)
         
     def get_params(self):
-        dict_ =  {   
+        dict_ = {   
                  'start_time': self.start_date_dateedit.date(),
                  'end_time': self.end_date_dateedit.date(),
                  'max_frequency' : float(self.max_freq_edit.text()),
@@ -378,6 +423,7 @@ class EstimationConfigWidget(QWidget):
         self.method_combo.currentIndexChanged.connect(self.method_changed_slot)
         self.method_combo.currentIndexChanged.connect(self.update_info_table)
         self.method_combo.addItems(self.estimation_methods)
+        self.method_combo.setCurrentIndex(2)
         self.method_hbox.addWidget(self.method_combo)
         
         self.window_hbox = QHBoxLayout()
@@ -406,11 +452,11 @@ class EstimationConfigWidget(QWidget):
         
         self.parameter_hbox = QHBoxLayout()
         self.left_vbox.addLayout(self.parameter_hbox)
-        self.parameter_label = QLabel('Number of segments:')
+        self.parameter_label = QLabel('Segment length:')
         self.parameter_hbox.addWidget(self.parameter_label)
-        self.parameter_edit = QLineEdit('2')
+        self.parameter_edit = QLineEdit('1000')
         self.parameter_edit.textChanged.connect(self.update_info_table)
-        self.parameter_edit.setEnabled(False)
+        self.parameter_edit.setEnabled(True)
         self.parameter_hbox.addStretch()
         self.parameter_hbox.addWidget(self.parameter_edit)
         
@@ -444,7 +490,7 @@ class EstimationConfigWidget(QWidget):
         if hasattr(self.parent_(), 'new_sampling_rate'):
             bw = windowing.bw[self.window_list[self.window_combo.currentIndex()]]
             self.info_table.setItem(0, 1, QTableWidgetItem(frequency_fmt(self.parent_().new_sampling_rate)))
-            sample_count = len(self.parent_().signal)
+            sample_count = len(self.parent_().signal[0])
             self.info_table.setItem(1, 1, QTableWidgetItem(str(sample_count)))
             max_frequency_resolution = self.parent_().new_sampling_rate * bw / sample_count
             if self.method_combo.currentIndex() == 1:
