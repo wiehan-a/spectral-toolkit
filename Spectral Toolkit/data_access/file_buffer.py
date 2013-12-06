@@ -44,13 +44,15 @@ class FileBuffer:
         new_annotations = []
         for annot in annotations:
             print annot
-            if annot[1] > key.start and annot[0] < key.end:
-                if annot[0] < key.start:
-                    annot[0] = key.start
-                if annot[1] > key.end:
-                    annot[1] = key.end
+            if annot[1] > key.start and annot[0] < key.stop:
                 annot[0] -= key.start
-                annot[1] -= key.end
+                annot[1] -= key.start
+                
+                if annot[0] < key.start:
+                    annot[0] = 0
+                if annot[1] > key.stop:
+                    annot[1] = key.stop
+                
                 new_annotations.append(annot)
         return annotations                    
         
@@ -93,14 +95,14 @@ class FileBuffer:
             diff_in_file = self.headers[f]['sample_count'] - foffset
             # print f, offset, diff_in_file, samples_remaining, self.headers[f]['sample_count'], foffset
             if diff_in_file <= samples_remaining:
-                print "file", f, "; sample", foffset, "to", diff_in_file + foffset, "in buffer", offset, 'to', offset + diff_in_file
+#                 print "file", f, "; sample", foffset, "to", diff_in_file + foffset, "in buffer", offset, 'to', offset + diff_in_file
                 data[offset : offset + diff_in_file] = self.read_proxy(self.files[f], self.headers[f], offset=foffset, samples=diff_in_file)
                 samples_remaining -= diff_in_file
                 f += 1
                 foffset = 0
                 offset += diff_in_file
             else:  # diff_in_file >= samples_remaining 
-                print "file", f, "; sample", foffset, "to", samples_remaining + foffset, "in buffer", offset, 'to', offset + samples_remaining
+#                 print "file", f, "; sample", foffset, "to", samples_remaining + foffset, "in buffer", offset, 'to', offset + samples_remaining
                 data[offset : offset + samples_remaining] = self.read_proxy(self.files[f], self.headers[f], offset=foffset, samples=samples_remaining)
                 samples_remaining = 0
         

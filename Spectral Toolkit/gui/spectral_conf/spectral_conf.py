@@ -144,7 +144,7 @@ class SpectralConf(QWidget):
         
         self.signal = signal
         self.components = components
-        self.hosted_widget.parameter_edit.setText(str(min(len(signal[0]), 2000)))
+        self.hosted_widget.parameter_edit.setText(str(int(min(len(signal[0]), 5000))))
         
 #         print signal 
         
@@ -190,7 +190,7 @@ class SpectralConf(QWidget):
             with open(f_qt[0], 'w') as f:
                 f.write(script)
             with open(f_qt[0] + ".data", 'wb') as f:
-                self.spectrum.tofile(f)
+                self.spectrum[0].tofile(f)
 
     @Slot()
     def export_python_spectrum(self):
@@ -200,7 +200,7 @@ class SpectralConf(QWidget):
             with open(f_qt[0], 'w') as f:
                 f.write(script)
             with open(f_qt[0] + ".data", 'wb') as f:
-                self.spectrum.tofile(f)
+                self.spectrum[0].tofile(f)
         
     @Slot()
     def view_spectrum_slot(self):
@@ -218,13 +218,13 @@ class SpectralConf(QWidget):
         
     @Slot()
     def peak_detection_slot(self):
-        if len(self.spectrum) < 3000:
+        if len(self.spectrum[0]) < 3000:
             msgBox = QMessageBox()
             msgBox.setText("Estimated spectrum vector is too short. Please choose a higher interpolation factor.")
             msgBox.setIcon(QMessageBox.Critical)
             msgBox.exec_()
         else:
-            self.pd_worker = PeakDetectionWorker.PeakDetectionWorker(self.spectrum, self.new_sampling_rate)
+            self.pd_worker = PeakDetectionWorker.PeakDetectionWorker(self.spectrum[0], self.new_sampling_rate)
             self.pd_thread = QThread()
             self.pd_worker.moveToThread(self.pd_thread)
             self.pd_worker.done.connect(self.pd_done_slot)

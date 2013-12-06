@@ -135,7 +135,7 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
         
     assert len(prev_block) == M - 1
     
-    print delay, M
+    #print delay, M
      
     cdef int N = 2 ** int((np.log2(M * 4)))
     cdef int L = N - M + 1

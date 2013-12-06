@@ -15,7 +15,7 @@ import matplotlib.pyplot as plt
 transition_band = 0.07
 attenuation = 120
 
-max_chunk_size = 4*5800000
+max_chunk_size = 5800000
 
 class NotEnoughSamplesException(Exception):
     pass

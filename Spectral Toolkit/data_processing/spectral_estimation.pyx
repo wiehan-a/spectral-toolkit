@@ -32,7 +32,7 @@ def periodogram(signal, window=windowing.apply_blackman_harris, interpolation_fa
 
     if window is not None:
         signal = window(signal, inplace=inplace_windowing)
-        #signal -= np.mean(signal)
+        # signal -= np.mean(signal)
 
     fft_ = mfftw.real_fft(signal, interpolation_factor * N, threads=CPU_COUNT)
     fft_ = np.square(fft_)
@@ -73,7 +73,7 @@ def bartlett(signal, K, window=windowing.apply_blackman, interpolation_factor=1)
         
     return output_buffer / K
 
-def welch(signal, W, window=windowing.apply_blackman, interpolation_factor=1):
+def welch(signal, W, window=windowing.apply_blackman, interpolation_factor=1, annotations=None):
     '''
     Performs the welch spectral estimation technique on
     the data. It calculates len(signal)-W, overlapping periodograms
@@ -104,10 +104,15 @@ def welch(signal, W, window=windowing.apply_blackman, interpolation_factor=1):
     print "LS", len(signal)
     
     for idx in xrange(0, len(signal) - W, skip):
-        #print "LS", len(signal), "BS", signal.buffer_size, signal.begin_trim, signal.end_trim
-        #print "signal[", idx, ":", (idx + W), ']'
+        
+        # check to see if block is good
+        if hasattr(signal, 'filter_annotations'):
+            annots = signal.filter_annotations(slice(idx, idx + W, 1))
+            if len(annots) > 0:
+                print "skip this iteration due to missing samples", annots
+#                 continue
+         
         output_buffer += periodogram(signal[idx:idx + W], window, interpolation_factor=interpolation_factor)
-        #print "LS", len(signal)
         count += 1
         
     return output_buffer / count
