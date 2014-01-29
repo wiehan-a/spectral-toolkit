@@ -125,12 +125,7 @@ def load_annotations(filename):
     return []
     
 def db_get_entry_count():
-    return len(db)
-
-        # need to query db by time: get a list of files whose end times > start and start_times < end
-        # sort by time
-        # then figure out how many samples in and out
-        
+    return len(db)        
         
 def query_db_by_time(source, start_time, end_time, components_filter=[]):
     '''

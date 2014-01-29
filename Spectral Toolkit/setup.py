@@ -26,7 +26,7 @@ class build_ext_subclass(build_ext):
     def build_extensions(self):
         if self.compiler.compiler_type == 'msvc':
             bitness = struct.calcsize("P") * 8
-            print bitness
+            print "Compiling for", bitness, "bit environment"
             for e in self.extensions:
                 e.include_dirs = [numpy.get_include(), 
                                   os.path.join('fftw_wrapper'),]
@@ -42,15 +42,15 @@ class build_ext_subclass(build_ext):
 
         build_ext.build_extensions(self)
 
-ext_modules = [Extension("data_processing.sigproc", ["data_processing/sigproc.pyx"]),
-               Extension("data_processing.convolution", ["data_processing/convolution.pyx"]),
-               Extension("data_processing.windowing", ["data_processing/windowing.pyx"]),
+ext_modules = [ 
+                Extension("data_processing.sigproc", ["data_processing/sigproc.pyx"]),
+                Extension("data_processing.convolution", ["data_processing/convolution.pyx"]),
+                Extension("data_processing.windowing", ["data_processing/windowing.pyx"]),
                 Extension("data_processing.spectral_estimation", ["data_processing/spectral_estimation.pyx"]),
                 Extension("data_processing.discontinuity_tool", ["data_processing/discontinuity_tool.pyx"]),
                 Extension("data_processing.peak_detection", ["data_processing/peak_detection.pyx"]),
                 Extension("fftw_wrapper.fftw_py", ["fftw_wrapper/fftw_py.pyx"]),
-               
-                ]
+              ]
 
 setup(
   name='Spectral Toolkit',

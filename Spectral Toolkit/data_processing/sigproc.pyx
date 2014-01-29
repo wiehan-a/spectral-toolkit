@@ -124,6 +124,19 @@ def get_auto_corr_matrix(signal, order=3):
     R_ = np.hstack((R[1:][::-1], R))
     auto_corr_matrix = np.vstack((R_[-1 * i + order:2 * order - 1 * i] for i in xrange(order)))
     return R, auto_corr_matrix
+
+@cython.boundscheck(True)
+def do_prediction(np.ndarray[dtype=np.float64_t] signal, np.ndarray[dtype=np.float64_t] predictor, sections):
+    cdef int order = len(predictor)
+    cdef int start_idx = 0
+    cdef int idx = 0
+    cdef int idx2 = 0
+    for section in sections:
+        for idx in xrange(section[0], section[1]):
+            max_back = min(idx, order)
+            signal[idx] = 0
+            for idx2 in xrange(1, max_back):
+                signal[idx] -= signal[idx - idx2] * predictor[idx2]
  
 @cython.boundscheck(False)
 def linear_predictor(signal, order=3):

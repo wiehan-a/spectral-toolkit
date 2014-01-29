@@ -214,6 +214,7 @@ class SpectralConf(QWidget):
             
         new_plot = Plotter((self.new_sampling_rate / 2) * np.arange(len(signals[0])) / len(signals[0]), signals, None, "Frequency (Hz)", "(nT$^2$/Hz)$_{dB}$", self.components)
         new_plot.closed.connect(self.parent_().plot_closed_slot)
+        self.parent_().main_tabwidget.addTab(new_plot, "Plot (FD)")
         self.parent_().plots.append(new_plot)
         
     @Slot()

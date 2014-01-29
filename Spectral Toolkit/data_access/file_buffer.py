@@ -7,6 +7,20 @@ Created on Nov 28, 2013
 import numpy as np
 from config import load_annotations
 from copy import copy
+import os
+
+def load_preview(files):
+    preview_signal = np.zeros(0)
+    for file in files:
+        if os.path.exists(file):
+            preview_signal = np.hstack((preview_signal, np.fromfile(file+".pre", np.float32)))
+        else:
+            return None
+    return preview_signal
+
+def load_f_preview(files):
+    preview_signal = np.zeros(0)
+    return np.fromfile(files[0]+".spec_pre", np.float32)
 
 class FileBuffer:
     
@@ -32,7 +46,7 @@ class FileBuffer:
                 self.annotations.append(annot)
         
         self.seek(0)
-        
+    
     def read_proxy(self, filename, head, offset=0, samples='all'):
         raise Exception()
         
@@ -112,3 +126,4 @@ class FileBuffer:
         
     def load_all_files(self):
         return self.read(self.buffer_size)
+    

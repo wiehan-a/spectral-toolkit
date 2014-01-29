@@ -21,7 +21,7 @@ class Plotter(QWidget):
     
     closed = Signal(QObject)
     
-    def __init__(self, x, y, annotations=None, x_unit=None, y_unit=None, component_labels=None):
+    def __init__(self, x, y, annotations=None, x_unit=None, y_unit=None, component_labels=None, standalone=False):
         QWidget.__init__(self)
         
         self.setWindowTitle('Spectral Toolkit (Figure)')
@@ -73,7 +73,8 @@ class Plotter(QWidget):
         self.main_vbox.addWidget(self.canvas)
         self.setLayout(self.main_vbox)
         
-        self.show()
+        if standalone:
+            self.show()
         
     def closeEvent(self, *args, **kwargs):
         print 'Plot closed'

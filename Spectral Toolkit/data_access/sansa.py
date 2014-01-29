@@ -6,11 +6,12 @@ Created on Sep 18, 2013
 
 from __future__ import division
 
-import utils, time, urllib2, urllib, datetime, os, zlib, struct
+import utils, time, urllib2, urllib, datetime, os, zlib, struct, segy, data_processing
 from config import *
 from PySide.QtCore import *
 import numpy as np
 from file_buffer import FileBuffer
+from data_processing import multirate
 
 SUPPORT_PARTIAL_PROGRESS_REPORTING = False
 SANSA_URL = 'http://geomagnet.ee.sun.ac.za/dbreadusec.php'
@@ -93,9 +94,9 @@ class DownloaderWorker(QObject):
             if len(buffer) == 0 or len(lines) == 0:
                 print "********* No data for block: ", num_samples, "samples missed"
                 zeros = np.zeros(shape=(num_samples,), dtype=np.float32)
-                zeros.tofile(self.comp_1_file, format='f')
-                zeros.tofile(self.comp_2_file, format='f')
-                zeros.tofile(self.comp_3_file, format='f')
+                zeros.tofile(self.comp_1_file)
+                zeros.tofile(self.comp_2_file)
+                zeros.tofile(self.comp_3_file)
                 
                 self.missing_intervals.append([self.sample_count, self.sample_count + num_samples])
                 self.sample_count += num_samples
@@ -111,9 +112,9 @@ class DownloaderWorker(QObject):
                             samples_missed = np.round(interval.total_seconds() / (1.0 / 125))
                             print "****** A-- we missed some samples ===", samples_missed, last_time, time_
                             zeros = np.zeros(shape=(samples_missed - 1,), dtype=np.float32)
-                            zeros.tofile(self.comp_1_file, format='f')
-                            zeros.tofile(self.comp_2_file, format='f')
-                            zeros.tofile(self.comp_3_file, format='f')
+                            zeros.tofile(self.comp_1_file)
+                            zeros.tofile(self.comp_2_file)
+                            zeros.tofile(self.comp_3_file)
                             self.missing_intervals.append([self.sample_count, self.sample_count + samples_missed])
                             self.sample_count += samples_missed
                         
@@ -128,9 +129,9 @@ class DownloaderWorker(QObject):
                     samples_missed = np.round(interval.total_seconds() / (1.0 / 125)) - 1
                     print "****** B-- we missed some samples ===", samples_missed
                     zeros = np.zeros(shape=(samples_missed,), dtype=np.float32)
-                    zeros.tofile(self.comp_1_file, format='f')
-                    zeros.tofile(self.comp_2_file, format='f')
-                    zeros.tofile(self.comp_3_file, format='f')
+                    zeros.tofile(self.comp_1_file)
+                    zeros.tofile(self.comp_2_file)
+                    zeros.tofile(self.comp_3_file)
                     self.missing_intervals.append([self.sample_count, self.sample_count + samples_missed])
                     self.sample_count += samples_missed
                             
@@ -178,6 +179,18 @@ class DownloaderWorker(QObject):
                 del self.missing_intervals[idx]
 
             idx -= 1
+            
+    def create_previews(self, filenames):
+        for filename in filenames:
+            signal = SansaFileBuffer([filename])
+            signal = multirate.decimate(signal, 5, attenuation=40)
+            signal = multirate.decimate(signal, 5, attenuation=40)
+            signal = multirate.decimate(signal, 4, attenuation=40)
+            np.float32(signal).tofile(filename+".pre")
+            
+            signal = SansaFileBuffer([filename])
+            signal = 10*np.log10(data_processing.spectral_estimation.welch(signal, min(int(len(signal)/3), 5000)))
+            np.float32(signal).tofile(filename+".spec_pre")
     
     Slot()
     def start_downloading(self):
@@ -235,6 +248,8 @@ class DownloaderWorker(QObject):
             self.comp_1_file.close()
             self.comp_2_file.close()
             self.comp_3_file.close()
+            
+            self.create_previews([n1, n2, n3])
                 
         self.done.emit()
         

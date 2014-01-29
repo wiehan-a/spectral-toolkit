@@ -10,6 +10,10 @@ import data_access.segy as segy
 import datetime
 import os.path
 import utils
+from data_processing import multirate, spectral_estimation
+import data_processing
+
+import numpy as np
 
 from errors import *
 
@@ -77,22 +81,31 @@ class ControlledFTP:
         self.ftp_connection.sendcmd('TYPE I')
         filename = get_local_file_name(date, component, params)
         
-        if os.path.exists(filename):
-            print "skipping this file"
-            return
-        
-        self.file = open(filename, 'wb')
-        self.ftp_connection.retrbinary('RETR ' + self.get_path(date, component), self.download_persist_callback, 1024 * 1024 / 4)
-        
-        start_time = datetime.datetime.combine(date, datetime.time())
-        end_time = datetime.datetime.combine(date + datetime.timedelta(days=1) - 
-                                             datetime.timedelta(seconds=1), datetime.time())
-        
-        db_add_entry(filename, 'LSBB', component, params['sampling_rate'],
-                     start_time, end_time)
-        
-        save_db()
-        self.file.close()
+        if not os.path.exists(filename):
+            self.file = open(filename, 'wb')
+            self.ftp_connection.retrbinary('RETR ' + self.get_path(date, component), self.download_persist_callback, 1024 * 1024 / 4)
+            
+            start_time = datetime.datetime.combine(date, datetime.time())
+            end_time = datetime.datetime.combine(date + datetime.timedelta(days=1) - 
+                                                 datetime.timedelta(seconds=1), datetime.time())
+            
+            db_add_entry(filename, 'LSBB', component, params['sampling_rate'],
+                         start_time, end_time)
+            
+            
+            
+            save_db()
+            self.file.close()
+            
+            signal = segy.SegyFileBuffer([filename])
+            signal = multirate.decimate(signal, 5, attenuation=40)
+            signal = multirate.decimate(signal, 5, attenuation=40)
+            signal = multirate.decimate(signal, 4, attenuation=40)
+            np.float32(signal).tofile(filename+".pre")
+            
+            signal = segy.SegyFileBuffer([filename])
+            signal = 10*np.log10(data_processing.spectral_estimation.welch(signal, min(len(signal)/3, 5000)))
+            np.float32(signal).tofile(filename+".spec_pre")
     
     def get_components(self, filelist):
         return sorted(list(set([x.split('.')[-2] for x in filelist])))

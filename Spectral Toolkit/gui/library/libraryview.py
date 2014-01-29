@@ -14,7 +14,7 @@ from gui.downloader.importer import Importer
 from gui.data_invalid import DataInvalidAdder
 from gui.spectral_conf.spectral_conf import SpectralConf
 
-import gc, os, datetime, pytz
+import gc, os, datetime, pytz, functools
 
 
 from config import *
@@ -22,6 +22,9 @@ from gui.display.plot_td import *
 from gui.icons import *
 
 from data_access import export_td
+from gui.display.thumbnail_preview import ThumbnailPlotter
+from data_access import file_buffer
+from gui.library.interpolate_worker import InterpolateWorker
 
 
 class Library(QMainWindow):
@@ -33,24 +36,20 @@ class Library(QMainWindow):
         QMainWindow.__init__(self)
         self.setWindowTitle('Spectral Toolkit (Data library)')
         self.setMinimumWidth(1000)
-        self.setMinimumHeight(700)
+        self.setMinimumHeight(600)
         self.setWindowIcon(QIcon('icon.png'))
         
         self.statusBar().showMessage('Ready')
         
         if os.name == 'nt':
-            # This is needed to display the app icon on the taskbar on Windows 7
             import ctypes
-            myappid = 'MyOrganization.MyGui.1.0.0'  # arbitrary string
+            myappid = 'SpecTool.Library.1.0.0'
             ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
         
         self.lib = LibraryCentralWidget(self)
         self.setCentralWidget(self.lib)
         
         self.init_menus()
-        
-    def make_lambda(self, ot):
-        return lambda: self.overview_triggered(ot) 
         
     def init_menus(self):
         self.data_menu = self.menuBar().addMenu("&Data")
@@ -70,7 +69,7 @@ class Library(QMainWindow):
         self.overview_timedeltas = [datetime.timedelta(minutes=10), datetime.timedelta(hours=1), datetime.timedelta(hours=6), datetime.timedelta(hours=24)]
         for idx, ot in enumerate(self.overview_times):
             action = QAction(ot, self)
-            action.triggered.connect(self.make_lambda(self.overview_timedeltas[idx]))
+            action.triggered.connect(functools.partial(self.overview_triggered, self.overview_timedeltas[idx]))
             self.overviews_menu.addAction(action)
         
         self.help_menu = self.menuBar().addMenu("&Help")
@@ -113,7 +112,8 @@ class Library(QMainWindow):
     def overview_processing_done_slot(self, x_axis, signals, annotations, components):
         print "done downsampling"
         self.statusBar().showMessage('Plotting...')
-        plotter = Plotter(x_axis, signals, annotations, None, "nT", components)
+        plotter = Plotter(x_axis, signals, annotations, None, "nT", components, False)
+        self.lib.main_tabwidget.addTab(plotter, "Plot (TD)")
         plotter.closed.connect(self.lib.plot_closed_slot)
         self.statusBar().showMessage('Ready')
         self.lib.plots.append(plotter)
@@ -132,14 +132,6 @@ class Library(QMainWindow):
                   'source': 'SANSA'}
         
         self.overview_downloader = DownloaderWidget(self.overview_params, self, stand_alone=True).run()
-        
-        
-        # just download the neccessary data (blindly): show downloader gui
-        
-        # need to query db by time: get a list of files whose end times > start and start_times < end
-        # sort by time
-        # then figure out how many samples in and out
-        # not too hard
     
     @Slot()
     def import_slot(self):
@@ -171,10 +163,14 @@ class LibraryCentralWidget(QWidget):
         self.main_hbox.addLayout(self.left_vbox)
         self.main_hbox.addLayout(self.right_vbox)
         
+        self.main_tabwidget = QTabWidget()
         self.table = QTableView()
         self.table_model = LibraryModel()
         self.table.setModel(self.table_model)
-        self.left_vbox.addWidget(self.table)
+        self.left_vbox.addWidget(self.main_tabwidget)
+        self.main_tabwidget.addTab(self.table, "Library")
+        self.main_tabwidget.tabCloseRequested.connect(self.closeTab)
+        self.main_tabwidget.tabBar().installEventFilter(self)
         verthead = self.table.verticalHeader()
         verthead.setDefaultSectionSize(verthead.fontMetrics().height() + 4)
          
@@ -182,24 +178,71 @@ class LibraryCentralWidget(QWidget):
         self.table.resizeColumnsToContents()
         self.table.setSelectionBehavior(QAbstractItemView.SelectRows)
         
-#         self.action_bar_hbox = QHBoxLayout()
-#         self.left_vbox.addLayout(self.action_bar_hbox)
-#         self.import_file_button = QPushButton('Import from file')
-#         self.action_bar_hbox.addWidget(self.import_file_button)
-#         self.download_more_button = QPushButton('Download more')
-#         self.download_more_button.clicked.connect(self.download_more_slot)
-#         self.action_bar_hbox.addWidget(self.download_more_button)
-#         self.action_bar_hbox.addStretch()
-#         self.analyze_button = QPushButton('Perform spectral analysis')
-#         self.action_bar_hbox.addWidget(self.analyze_button)
         
         self.filter_widget = LibraryFilterWidget(self.table_model)
         self.right_vbox.addWidget(self.filter_widget)
+        self.thumb_plot_widget = ThumbnailPlotter()
+        self.right_vbox.addWidget(self.thumb_plot_widget)
+        self.thumb_plot_f_widget = ThumbnailPlotter("Frequency domain preview")
+        self.right_vbox.addWidget(self.thumb_plot_f_widget)
+        self.right_vbox.addStretch()
         
         self.main_hbox.setStretchFactor(self.left_vbox, 2)
         
         self.table.setContextMenuPolicy(Qt.CustomContextMenu)
         self.table.customContextMenuRequested.connect(self.tableContextMenu)
+        
+        m = self.table.selectionModel()
+        m.selectionChanged.connect(self.tableSelectionChanged)
+        
+    def eventFilter(self, obj, event):
+        if isinstance(event, QContextMenuEvent):
+            print "right click"
+            tab_index = self.main_tabwidget.tabBar().tabAt(event.pos())
+            if tab_index != 0:
+                menu = QMenu(self)
+                callback = functools.partial(self.popOutTab, tab_index)
+                self.popout_action = QAction(app_icons['export'], 'Pop out tab', self)
+                self.popout_action.triggered.connect(callback)
+                
+                callback = functools.partial(self.closeTab, tab_index)
+                self.close_action = QAction(app_icons['delete'], 'Close tab', self)
+                self.close_action.triggered.connect(callback)
+                
+                menu.addAction(self.popout_action)
+                menu.addAction(self.close_action)
+                
+                menu.exec_(self.mapToGlobal(event.pos()))
+                return True
+        return QWidget.eventFilter(self, obj, event)
+        
+    def popOutTab(self, index):
+        if index == 0:
+            return
+        widget = self.main_tabwidget.widget(index)
+        self.main_tabwidget.removeTab(index)
+        widget.setVisible(True)
+        widget.setParent(None)
+        widget.show()
+        
+    @Slot(int)
+    def closeTab(self, index):
+        widget = self.main_tabwidget.widget(index)
+        self.main_tabwidget.removeTab(index)
+        widget.close()
+        
+    @Slot()
+    def tableSelectionChanged(self):
+        rows = list(set([qmi.row() for qmi in self.table.selectedIndexes()]))
+        files = [self.table_model.filtered_list[r][0] for r in rows]
+        if len(files) == 1:
+            self.thumb_plot_widget.setLoading()
+            self.preview_signal = file_buffer.load_preview(files)
+            self.thumb_plot_widget.draw(self.preview_signal)
+            
+            self.preview_f_signal = file_buffer.load_f_preview(files)
+            self.thumb_plot_f_widget.draw(self.preview_f_signal)
+
         
     @Slot(QPoint)
     def tableContextMenu(self, point):
@@ -209,6 +252,9 @@ class LibraryCentralWidget(QWidget):
         
         self.spec_est_action = QAction(app_icons['estimate'], 'Spectral estimation', self)
         self.spec_est_action.triggered.connect(self.spectral_estimation_slot)
+        
+        self.interpolate_action = QAction(app_icons['estimate'], 'Interpolate missing samples', self)
+        self.interpolate_action.triggered.connect(self.interpolate_slot)
         
         self.exp_matlab_action = QAction(app_icons['export'], 'Export to MATLAB', self)
         self.exp_matlab_action.triggered.connect(self.exp_matlab_slot)
@@ -221,9 +267,7 @@ class LibraryCentralWidget(QWidget):
         
         menu.addAction(self.display_td_action)
         menu.addSeparator()
-#         menu.addAction('Downsample')
-#        menu.addAction('Discontinuity tool')
-#         menu.addAction('Spectral normalisation')
+        menu.addAction(self.interpolate_action)
         menu.addAction(self.spec_est_action)
         menu.addSeparator()
         menu.addAction(self.exp_matlab_action)
@@ -234,12 +278,48 @@ class LibraryCentralWidget(QWidget):
         menu.exec_(self.mapToGlobal(point))
         
     @Slot()
+    def interpolate_slot(self):
+        rows = list(set([qmi.row() for qmi in self.table.selectedIndexes()]))
+        if len(rows) == 1:
+            files = [self.table_model.filtered_list[rows[0]][0]]
+
+            worker = InterpolateWorker(files, self.parent())
+            worker.messaging.connect(self.parent().statusBar().showMessage)
+            self.workers.append(worker)
+            interpolate_thread = QThread()
+            self.worker_threads.append(interpolate_thread)
+            worker.moveToThread(interpolate_thread)
+            
+            callback = functools.partial(self.parent().statusBar().showMessage, 'Done interpolating...')
+            worker.done.connect(callback)
+            interpolate_thread.started.connect(worker.interpolate)
+            interpolate_thread.start()
+            worker.done.connect(interpolate_thread.quit)
+            interpolate_thread.finished.connect(interpolate_thread.deleteLater)
+        
+    @Slot()
     def delete_slot(self):
         self.parent().statusBar().showMessage('Deleting files...')
         rows = list(set([qmi.row() for qmi in self.table.selectedIndexes()]))
         files = [self.table_model.filtered_list[r][0] for r in rows]
         
         for f in files:
+            
+            try:
+                os.remove(f+".pre")
+            except:
+                pass
+            
+            try:
+                os.remove(f+".spec_pre")
+            except:
+                pass
+            
+            try:
+                os.remove(f+".annot")
+            except:
+                pass
+            
             try:
                 os.remove(f)
             except IOError:
@@ -311,6 +391,7 @@ class LibraryCentralWidget(QWidget):
         plotter.closed.connect(self.plot_closed_slot)
         self.parent().statusBar().showMessage('Ready')
         self.plots.append(plotter)
+        self.main_tabwidget.addTab(plotter, "Plot (TD)")
     
     @Slot()
     def display_td_slot(self):
@@ -475,6 +556,7 @@ class LibraryCentralWidget(QWidget):
         self.downloader.run()
         self.downloader.finished_downloading_signal.connect(self.table_model.refreshModel)
         
+        
 class MultipleSourcesException(Exception):
     pass
 
@@ -490,9 +572,3 @@ class NotContiguousException(Exception):
 class TimeMismatchException(Exception):
     pass
         
-
-if __name__ == '__main__':
-    qt_app = QApplication(sys.argv)
-    app = Library()
-    app.run()
-    qt_app.exec_()
