@@ -132,7 +132,7 @@ def do_prediction(np.ndarray[dtype=np.float64_t] signal, np.ndarray[dtype=np.flo
     cdef int idx = 0
     cdef int idx2 = 0
     for section in sections:
-        for idx in xrange(section[0], section[1]):
+        for idx in xrange(max(0, section[0]-3), min(len(signal), section[1]+3)):
             max_back = min(idx, order)
             signal[idx] = 0
             for idx2 in xrange(1, max_back):

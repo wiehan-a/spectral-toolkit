@@ -57,7 +57,7 @@ class FileBuffer:
         annotations = copy(self.annotations)
         new_annotations = []
         for annot in annotations:
-            print annot
+            print annotations, key, annot
             if annot[1] > key.start and annot[0] < key.stop:
                 annot[0] -= key.start
                 annot[1] -= key.start

@@ -25,7 +25,6 @@ def downsample_for_display(signal, target_length=TARGET_LENGTH, buffered=False, 
     to be displayed onscreen.
     '''
     
-        
     while len(signal) >= 2 * target_length:
         decimation_factor = int(len(signal) / target_length)
          
