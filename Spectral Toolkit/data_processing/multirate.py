@@ -42,7 +42,8 @@ def decimate(signal, factor, previous_samples=None, transition_band=transition_b
     delay = int((len(filter) - 1) / 2)
     
     if len(filter) >= len(signal):
-        raise NotEnoughSamplesException('Filter length exceeds signal length, try relaxing constraints')
+        #raise NotEnoughSamplesException('Filter length exceeds signal length, try relaxing constraints')
+        return signal
                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                 
     decimated = np.zeros(shape=(0,), dtype=np.float64)
     

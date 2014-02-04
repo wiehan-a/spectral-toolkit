@@ -106,11 +106,11 @@ def welch(signal, W, window=windowing.apply_blackman, interpolation_factor=1, an
     for idx in xrange(0, len(signal) - W, skip):
         
         # check to see if block is good
-        if hasattr(signal, 'filter_annotations'):
-            annots = signal.filter_annotations(slice(idx, idx + W, 1))
-            if len(annots) > 0:
-                print "skip this iteration due to missing samples", annots
-                #continue
+#         if hasattr(signal, 'filter_annotations'):
+#             annots = signal.filter_annotations(slice(idx, idx + W, 1))
+#             if len(annots) > 0:
+#                 print "skip this iteration due to missing samples", annots
+#                 #continue
          
         output_buffer += periodogram(signal[idx:idx + W], window, interpolation_factor=interpolation_factor)
         count += 1

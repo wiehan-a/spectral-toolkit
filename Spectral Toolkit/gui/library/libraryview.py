@@ -74,10 +74,23 @@ class Library(QMainWindow):
         
         self.help_menu = self.menuBar().addMenu("&Help")
         self.help_action = QAction(app_icons['help'], "&User guide", self)
+        self.help_action.triggered.connect(self.user_guide_slot)
         self.about_action = QAction("&About Spectral Toolkit", self)
+        self.about_action.triggered.connect(self.about_slot)
         self.help_menu.addAction(self.help_action)
         self.help_menu.addSeparator()
         self.help_menu.addAction(self.about_action)
+        
+    @Slot()
+    def user_guide_slot(self):
+        QDesktopServices.openUrl(QUrl("User_guide.pdf"));
+        
+    @Slot()
+    def about_slot(self):
+        QMessageBox.about(self, "About Spectral Toolkit", 
+                          '''<p><b>Author:</b> Wiehan Agenbag (<a href="mailto:wiehan.a@gmail.com?Subject=Spectral Toolkit">wiehan.a@gmail.com</a>)</p>
+                          <p>Source code is available on the project's GitHub <a href="https://github.com/wiehan-a/spectral-toolkit/">page</a>.</p>'''
+                          )
         
     @Slot()
     def cancel_successful(self):
@@ -119,6 +132,7 @@ class Library(QMainWindow):
         self.lib.plots.append(plotter)
         self.overview_downloader.setVisible(False)
         self.overview_downloader.deleteLater()
+        self.lib.table_model.refreshModel()
         
         
     def overview_triggered(self, timedelta_):
