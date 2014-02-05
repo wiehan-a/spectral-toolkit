@@ -15,7 +15,7 @@ from data_access.segy import *
 from data_processing import multirate, display_friendly
 
 from collections import deque
-
+from main import CPU_COUNT
 import bisect, copy
 
 cimport numpy as np
@@ -47,13 +47,7 @@ def cwt(signal, scales, sampling_rate=1):
     for idx, scale in enumerate(scales):
         wavelet = mexican_hat_wavelet(a=scale, sampling_rate=sampling_rate)[1]
         delay = int((len(wavelet) - 1) / 2) + 1
-        CWT_ = fast_convolve_fftw_w(signal, wavelet, delay=delay)
-#         print delay, len(CWT_)
-#         if CWT is None:
-#             CWT = CWT_
-#         else:
-#             CWT = np.vstack((CWT, CWT_))
-    
+        CWT_ = fast_convolve_fftw_w(signal, wavelet, delay=delay)    
         if CWT is None:
             CWT = np.empty(shape=(len(scales), len(CWT_)), dtype=np.float64)
             

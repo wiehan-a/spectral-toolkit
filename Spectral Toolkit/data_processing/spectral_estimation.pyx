@@ -9,10 +9,7 @@ import numpy as np
 cimport numpy as np
 import windowing
 import fftw_wrapper.fftw_py as mfftw
-
-import sys, multiprocessing
-CPU_COUNT = multiprocessing.cpu_count()
-
+from main import CPU_COUNT
 
 def periodogram(signal, window=windowing.apply_blackman_harris, interpolation_factor=1, inplace_windowing=False, disable_normalize=False):
     '''

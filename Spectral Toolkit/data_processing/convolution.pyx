@@ -5,6 +5,7 @@ Created on Sep 24, 2013
 '''
 
 import numpy as np
+from main import CPU_COUNT
 cimport numpy as np
 
 import numpy.fft as fft
@@ -46,12 +47,13 @@ def slow_convolve(np.ndarray[np.float64_t, ndim=1] x not None,
     if out_buffer is None:
         out_buffer = np.zeros(shape=(x_len,), dtype=x.dtype)
     
+    cdef int CPU_COUNT = CPU_COUNT
     with nogil:
-        for n in prange(h_len, num_threads=8):
+        for n in prange(h_len, num_threads=CPU_COUNT):
             for k in xrange(0, n + 1):
                 out_buffer[n] += x[n - k] * h[k]
             
-        for n in prange(h_len, x_len, num_threads=8):
+        for n in prange(h_len, x_len, num_threads=CPU_COUNT):
             for k in xrange(0, h_len):
                 out_buffer[n] += x[n - k] * h[k]
         
@@ -174,8 +176,9 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
     local_real_out_block = < double *> fftw_alloc_real(N)
     forward_plan = fftw_plan_dft_r2c_1d(N, local_real_out_block, local_out_block, FFTW_MEASURE)
     backward_plan = fftw_plan_dft_c2r_1d(N, local_out_block, local_real_out_block, FFTW_MEASURE)
-     
-    with nogil, parallel(num_threads=8):
+    
+    cdef int CPU_COUNT = CPU_COUNT
+    with nogil, parallel(num_threads=CPU_COUNT):
          
         local_out_block = < fftw_complex *> fftw_alloc_complex(N/2+1)
         local_real_out_block = < double *> fftw_alloc_real(N)
