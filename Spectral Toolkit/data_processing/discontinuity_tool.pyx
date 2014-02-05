@@ -26,10 +26,15 @@ def find_discontinuities(np.ndarray[np.float64_t] signal, double tolerance=4, ma
     cdef float difference
     
     cdef int CPU_COUNT = CPU_COUNT
-    with nogil:
-        for idx in prange(1, x, num_threads=CPU_COUNT):
-            difference = signal[idx] - signal[idx - 1]
-            std += difference * difference
+    if CPU_COUNT == 1:
+        for idx in xrange(1, x):
+                difference = signal[idx] - signal[idx - 1]
+                std += difference * difference
+    else:
+        with nogil:
+            for idx in prange(1, x, num_threads=CPU_COUNT):
+                difference = signal[idx] - signal[idx - 1]
+                std += difference * difference
     
     std = np.sqrt(std / x)
     

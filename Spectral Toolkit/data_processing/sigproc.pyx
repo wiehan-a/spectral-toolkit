@@ -38,10 +38,10 @@ cdef void abs_squared(int N, fftw_complex * A) nogil:
         Calculates the magnitude squared of A and stores the result in B
     '''
     cdef int idxx
-    with nogil:
-        for idxx in prange(N, num_threads=8):
-            A[idxx][0] = A[idxx][0] * A[idxx][0] + A[idxx][1] * A[idxx][1]
-            A[idxx][1] = 0
+    #with nogil:
+    for idxx in xrange(N):
+        A[idxx][0] = A[idxx][0] * A[idxx][0] + A[idxx][1] * A[idxx][1]
+        A[idxx][1] = 0
 
 @cython.boundscheck(False)
 def auto_correlation_fft(np.ndarray[dtype=np.float64_t] signal, maximum_lag=3):
@@ -99,9 +99,9 @@ def levinson_durbin_recursion(np.ndarray[dtype=np.float64_t] R):
             denominator += solution[t] * R[t]
             
         solution_x[idx] = -1 * numerator / denominator
-        with nogil:
-            for idx2 in prange(1, idx, num_threads=8):
-                solution_x[idx2] = solution[idx2] + solution_x[idx] * solution[idx - idx2]
+#        with nogil:
+        for idx2 in xrange(1, idx):
+            solution_x[idx2] = solution[idx2] + solution_x[idx] * solution[idx - idx2]
         
         solution, solution_x = solution_x, solution
         

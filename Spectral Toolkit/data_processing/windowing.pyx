@@ -40,9 +40,13 @@ def apply_blackman(np.ndarray[dtype=np.float64_t] signal, inplace=True):
     
     cdef int idx = 0
     cdef int CPU_COUNT = CPU_COUNT
-    with nogil:
-        for idx in prange(N, num_threads=CPU_COUNT):
-            out_buffer[idx] = signal[idx] * (a0 - a1 * cos(idx * inner_constant_1) + a2 * cos(idx * inner_constant_2))
+    if CPU_COUNT == 1:
+        for idx in xrange(N):
+                out_buffer[idx] = signal[idx] * (a0 - a1 * cos(idx * inner_constant_1) + a2 * cos(idx * inner_constant_2))
+    else:
+        with nogil:
+            for idx in prange(N, num_threads=CPU_COUNT):
+                out_buffer[idx] = signal[idx] * (a0 - a1 * cos(idx * inner_constant_1) + a2 * cos(idx * inner_constant_2))
             
     return out_buffer
 
@@ -71,9 +75,14 @@ def apply_blackman_harris(np.ndarray[dtype=np.float64_t] signal, inplace=True):
     
     cdef int CPU_COUNT = CPU_COUNT
     cdef int idx = 0
-    with nogil:
-        for idx in prange(N, num_threads=CPU_COUNT):
+    
+    if CPU_COUNT == 1:
+        for idx in xrange(N):
             out_buffer[idx] = signal[idx] * (a0 - a1 * cos(idx * inner_constant_1) + a2 * cos(idx * inner_constant_2) - a3 * cos(idx * inner_constant_3))
+    else:
+        with nogil:
+            for idx in prange(N, num_threads=CPU_COUNT):
+                out_buffer[idx] = signal[idx] * (a0 - a1 * cos(idx * inner_constant_1) + a2 * cos(idx * inner_constant_2) - a3 * cos(idx * inner_constant_3))
             
     return out_buffer
 
@@ -110,9 +119,13 @@ def apply_flattop(np.ndarray[dtype=np.float64_t] signal, inplace=True):
     
     cdef int idx = 0
     cdef int CPU_COUNT = CPU_COUNT
-    with nogil:
-        for idx in prange(N, num_threads=CPU_COUNT):
+    if CPU_COUNT == 1:
+        for idx in xrange(N):
             out_buffer[idx] = signal[idx] * (a0 + a1 * cos(idx * inner_constant_1) + a2 * cos(idx * inner_constant_2) + a3 * cos(idx * inner_constant_3) + a4 * cos(idx * inner_constant_4))
+    else:
+        with nogil:
+            for idx in prange(N, num_threads=CPU_COUNT):
+                out_buffer[idx] = signal[idx] * (a0 + a1 * cos(idx * inner_constant_1) + a2 * cos(idx * inner_constant_2) + a3 * cos(idx * inner_constant_3) + a4 * cos(idx * inner_constant_4))
             
     return out_buffer
 

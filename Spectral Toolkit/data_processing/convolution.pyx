@@ -48,14 +48,23 @@ def slow_convolve(np.ndarray[np.float64_t, ndim=1] x not None,
         out_buffer = np.zeros(shape=(x_len,), dtype=x.dtype)
     
     cdef int CPU_COUNT = CPU_COUNT
-    with nogil:
-        for n in prange(h_len, num_threads=CPU_COUNT):
-            for k in xrange(0, n + 1):
-                out_buffer[n] += x[n - k] * h[k]
-            
-        for n in prange(h_len, x_len, num_threads=CPU_COUNT):
+    if CPU_COUNT == 1:
+        for n in xrange(h_len):
+                for k in xrange(0, n + 1):
+                    out_buffer[n] += x[n - k] * h[k]
+                
+        for n in xrange(h_len, x_len):
             for k in xrange(0, h_len):
                 out_buffer[n] += x[n - k] * h[k]
+    else:
+        with nogil:
+            for n in prange(h_len, num_threads=CPU_COUNT):
+                for k in xrange(0, n + 1):
+                    out_buffer[n] += x[n - k] * h[k]
+                
+            for n in prange(h_len, x_len, num_threads=CPU_COUNT):
+                for k in xrange(0, h_len):
+                    out_buffer[n] += x[n - k] * h[k]
         
     return out_buffer[delay:]
 
@@ -178,12 +187,11 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
     backward_plan = fftw_plan_dft_c2r_1d(N, local_out_block, local_real_out_block, FFTW_MEASURE)
     
     cdef int CPU_COUNT = CPU_COUNT
-    with nogil, parallel(num_threads=CPU_COUNT):
-         
+    if CPU_COUNT == 1:
         local_out_block = < fftw_complex *> fftw_alloc_complex(N/2+1)
         local_real_out_block = < double *> fftw_alloc_real(N)
           
-        for idx in prange(L - (M - 1), last, L):
+        for idx in xrange(L - (M - 1), last, L):
             local_ = & sli[idx]
             memcpy(local_real_out_block, local_, N * sizeof(double))
             fftw_execute_dft_r2c(forward_plan, local_real_out_block, local_out_block)
@@ -195,6 +203,24 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
   
         fftw_free(local_out_block)
         fftw_free(local_real_out_block)
+    else:
+        with nogil, parallel(num_threads=CPU_COUNT):
+             
+            local_out_block = < fftw_complex *> fftw_alloc_complex(N/2+1)
+            local_real_out_block = < double *> fftw_alloc_real(N)
+              
+            for idx in prange(L - (M - 1), last, L):
+                local_ = & sli[idx]
+                memcpy(local_real_out_block, local_, N * sizeof(double))
+                fftw_execute_dft_r2c(forward_plan, local_real_out_block, local_out_block)
+                mult_dfts(N / 2 + 1, < fftw_complex *> H_.data, local_out_block)
+                fftw_execute_dft_c2r(backward_plan, local_out_block, local_real_out_block)
+                
+                for idx2 in xrange(M - 1, N):
+                    output_data[idx + idx2] = local_real_out_block[idx2] / N
+      
+            fftw_free(local_out_block)
+            fftw_free(local_real_out_block)
     
     fftw_destroy_plan(forward_plan)
     fftw_destroy_plan(backward_plan)
