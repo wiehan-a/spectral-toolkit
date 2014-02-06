@@ -5,7 +5,7 @@ Created on Sep 24, 2013
 '''
 
 import numpy as np
-from main import CPU_COUNT
+from utils import get_cpu_count
 cimport numpy as np
 
 import numpy.fft as fft
@@ -47,7 +47,7 @@ def slow_convolve(np.ndarray[np.float64_t, ndim=1] x not None,
     if out_buffer is None:
         out_buffer = np.zeros(shape=(x_len,), dtype=x.dtype)
     
-    cdef int CPU_COUNT = CPU_COUNT
+    cdef int CPU_COUNT = get_cpu_count()
     if CPU_COUNT == 1:
         for n in xrange(h_len):
                 for k in xrange(0, n + 1):
@@ -186,7 +186,7 @@ def fast_convolve_fftw_w(np.ndarray[np.float64_t, ndim=1] x not None,
     forward_plan = fftw_plan_dft_r2c_1d(N, local_real_out_block, local_out_block, FFTW_MEASURE)
     backward_plan = fftw_plan_dft_c2r_1d(N, local_out_block, local_real_out_block, FFTW_MEASURE)
     
-    cdef int CPU_COUNT = CPU_COUNT
+    cdef int CPU_COUNT = get_cpu_count()
     if CPU_COUNT == 1:
         local_out_block = < fftw_complex *> fftw_alloc_complex(N/2+1)
         local_real_out_block = < double *> fftw_alloc_real(N)

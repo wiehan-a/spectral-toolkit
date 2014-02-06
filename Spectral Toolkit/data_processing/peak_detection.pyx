@@ -15,7 +15,7 @@ from data_access.segy import *
 from data_processing import multirate, display_friendly
 
 from collections import deque
-from main import CPU_COUNT
+from utils import get_cpu_count
 import bisect, copy
 
 cimport numpy as np

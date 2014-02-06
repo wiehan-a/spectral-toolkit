@@ -6,17 +6,7 @@ Created on Sep 16, 2013
 
 @author: Wiehan
 '''
-
 import os, ctypes, sys, multiprocessing, matplotlib
-
-CPU_COUNT = multiprocessing.cpu_count()
-if sys.platform == "darwin":
-    print "Multi-processing is buggy on Macs. Reverting to single-threaded computation."
-    CPU_COUNT = 1
-    
-print "Using", CPU_COUNT, "cpu cores"
-
-
 
 if __name__ == "__main__":
     

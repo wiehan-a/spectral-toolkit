@@ -12,7 +12,7 @@ cimport cython
 
 from cython.parallel import prange
 from libc.math cimport cos
-from main import CPU_COUNT
+from utils import get_cpu_count
 
 @cython.boundscheck(False)
 def apply_blackman(np.ndarray[dtype=np.float64_t] signal, inplace=True):
@@ -39,7 +39,7 @@ def apply_blackman(np.ndarray[dtype=np.float64_t] signal, inplace=True):
     cdef double inner_constant_2 = 4 * np.pi / (N - 1)
     
     cdef int idx = 0
-    cdef int CPU_COUNT = CPU_COUNT
+    cdef int CPU_COUNT = get_cpu_count()
     if CPU_COUNT == 1:
         for idx in xrange(N):
                 out_buffer[idx] = signal[idx] * (a0 - a1 * cos(idx * inner_constant_1) + a2 * cos(idx * inner_constant_2))
@@ -73,7 +73,7 @@ def apply_blackman_harris(np.ndarray[dtype=np.float64_t] signal, inplace=True):
     cdef double inner_constant_2 = 4 * np.pi / (N - 1)
     cdef double inner_constant_3 = 6 * np.pi / (N - 1)
     
-    cdef int CPU_COUNT = CPU_COUNT
+    cdef int CPU_COUNT = get_cpu_count()
     cdef int idx = 0
     
     if CPU_COUNT == 1:
@@ -118,7 +118,7 @@ def apply_flattop(np.ndarray[dtype=np.float64_t] signal, inplace=True):
     cdef double inner_constant_4 = 8 * np.pi / (N - 1)
     
     cdef int idx = 0
-    cdef int CPU_COUNT = CPU_COUNT
+    cdef int CPU_COUNT = get_cpu_count()
     if CPU_COUNT == 1:
         for idx in xrange(N):
             out_buffer[idx] = signal[idx] * (a0 + a1 * cos(idx * inner_constant_1) + a2 * cos(idx * inner_constant_2) + a3 * cos(idx * inner_constant_3) + a4 * cos(idx * inner_constant_4))

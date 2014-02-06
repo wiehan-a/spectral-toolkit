@@ -9,8 +9,8 @@ cimport numpy as np
 from cython.parallel import prange
 import cython
 from data_processing.display_friendly import *, downsample_for_display
-from main import CPU_COUNT
 import matplotlib.pyplot as plt
+from utils import get_cpu_count
 
 @cython.boundscheck(False)
 def find_discontinuities(np.ndarray[np.float64_t] signal, double tolerance=4, max_back=10):
@@ -25,7 +25,7 @@ def find_discontinuities(np.ndarray[np.float64_t] signal, double tolerance=4, ma
     cdef int x = len(signal)
     cdef float difference
     
-    cdef int CPU_COUNT = CPU_COUNT
+    cdef int CPU_COUNT = get_cpu_count()
     if CPU_COUNT == 1:
         for idx in xrange(1, x):
                 difference = signal[idx] - signal[idx - 1]

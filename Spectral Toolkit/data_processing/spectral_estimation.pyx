@@ -9,7 +9,7 @@ import numpy as np
 cimport numpy as np
 import windowing
 import fftw_wrapper.fftw_py as mfftw
-from main import CPU_COUNT
+from utils import get_cpu_count
 
 def periodogram(signal, window=windowing.apply_blackman_harris, interpolation_factor=1, inplace_windowing=False, disable_normalize=False):
     '''
@@ -31,7 +31,7 @@ def periodogram(signal, window=windowing.apply_blackman_harris, interpolation_fa
         signal = window(signal, inplace=inplace_windowing)
         # signal -= np.mean(signal)
 
-    fft_ = mfftw.real_fft(signal, interpolation_factor * N, threads=CPU_COUNT)
+    fft_ = mfftw.real_fft(signal, interpolation_factor * N, threads=get_cpu_count())
     fft_ = np.square(fft_)
     fft_ = np.abs(fft_)
     

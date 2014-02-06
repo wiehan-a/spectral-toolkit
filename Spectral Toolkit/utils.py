@@ -4,6 +4,15 @@ Created on Aug 15, 2013
 @author: Wiehan
 '''
 import numpy as np
+import os, ctypes, sys, multiprocessing, matplotlib
+
+if not globals().has_key("CPU_COUNT"):
+    CPU_COUNT = multiprocessing.cpu_count()
+    if sys.platform == "darwin":
+        print "Multi-processing is buggy on Macs. Reverting to single-threaded computation."
+        CPU_COUNT = 1
+        
+    print "Using", CPU_COUNT, "cpu cores"
 
 primelist = [2, 3, 5, 7]
 
@@ -61,5 +70,8 @@ def prime_factors(num):
         else:
             i += 1
     print factors
+    
+def get_cpu_count():
+    return CPU_COUNT
             
     
